@@ -36,12 +36,15 @@ const clientBuildPath = join(__dirname, '../client/dist');
 const app = express();
 const httpServer = createServer(app);
 
+// Determine allowed origins
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? true  // Allow all origins in production (same-origin requests from static files)
+  : ['http://localhost:5173', 'http://127.0.0.1:5173', `http://${process.env.HOST || 'localhost'}:5173`];
+
 // Initialize Socket.IO
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' 
-      ? false 
-      : ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
   },
@@ -68,9 +71,7 @@ app.use(helmet({
 
 app.use(compression());
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? false 
-    : ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: allowedOrigins,
   credentials: true
 }));
 
