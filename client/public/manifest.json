@@ -1,0 +1,50 @@
+{
+  "name": "ImageShare - Real-time Image Sharing",
+  "short_name": "ImageShare",
+  "description": "Share images instantly across devices without signup",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#0f172a",
+  "background_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icons/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "share_target": {
+    "action": "/api/share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "images",
+          "accept": ["image/jpeg", "image/png", "image/gif", "image/webp", "image/*"]
+        }
+      ]
+    }
+  },
+  "categories": ["photo", "utilities", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Create New Session",
+      "short_name": "Create",
+      "description": "Start a new image sharing session",
+      "url": "/?action=create",
+      "icons": [{ "src": "/icons/favicon.svg", "sizes": "any" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
