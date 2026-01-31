@@ -29,6 +29,9 @@ import { isValidSessionIdFormat } from './utils/security.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Path to client build folder
+const clientBuildPath = join(__dirname, '../client/dist');
+
 // Initialize Express
 const app = express();
 const httpServer = createServer(app);
@@ -80,7 +83,12 @@ app.use('/api/share-target', express.raw({
   limit: `${IMAGE_CONFIG.MAX_SIZE_BYTES}b`
 }));
 
-// Health check endpoint
+// Health check endpoint (for Render)
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// Health check endpoint with stats
 app.get('/api/health', (req, res) => {
   const stats = cleanupService.getStats();
   res.json({
@@ -225,12 +233,11 @@ function parseMultipartFormData(buffer, boundary) {
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
-  const clientPath = join(__dirname, '../dist/client');
-  app.use(express.static(clientPath));
+  app.use(express.static(clientBuildPath));
   
-  // SPA fallback
+  // SPA fallback - must be after all API routes
   app.get('*', (req, res) => {
-    res.sendFile(join(clientPath, 'index.html'));
+    res.sendFile(join(clientBuildPath, 'index.html'));
   });
 }
 
