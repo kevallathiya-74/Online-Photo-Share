@@ -1,0 +1,24 @@
+{
+  "name": "online-photo-share",
+  "version": "1.0.0",
+  "description": "<div align=\"center\">",
+  "main": "test-e2e.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kevallathiya-74/Online-Photo-Share.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/kevallathiya-74/Online-Photo-Share/issues"
+  },
+  "homepage": "https://github.com/kevallathiya-74/Online-Photo-Share#readme",
+  "dependencies": {
+    "socket.io-client": "^4.8.3"
+  }
+}

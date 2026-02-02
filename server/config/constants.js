@@ -15,6 +15,8 @@ export const SESSION_CONFIG = {
   ID_LENGTH: 5,
   // Maximum files per session
   MAX_FILES_PER_SESSION: 100,
+  // Maximum text messages per session
+  MAX_MESSAGES_PER_SESSION: 500,
   // Cleanup interval: run every 5 minutes
   CLEANUP_INTERVAL_MS: 5 * 60 * 1000
 };
@@ -25,7 +27,9 @@ export const FILE_CONFIG = {
   // Accept ALL file types - no restrictions
   ALLOWED_TYPES: ['*'],
   // File ID length in bytes
-  ID_LENGTH: 16
+  ID_LENGTH: 16,
+  // Chunk size for large file uploads: 1MB
+  CHUNK_SIZE: 1 * 1024 * 1024
 };
 
 // Deprecated: keeping for backwards compatibility
@@ -46,8 +50,13 @@ export const SOCKET_EVENTS = {
   JOIN_SESSION: 'session:join',
   LEAVE_SESSION: 'session:leave',
   UPLOAD_FILE: 'file:upload',
+  UPLOAD_START: 'file:upload-start',
+  UPLOAD_CHUNK: 'file:upload-chunk',
+  UPLOAD_COMPLETE: 'file:upload-complete',
   DELETE_FILE: 'file:delete',
   REQUEST_FILE: 'file:request',
+  SEND_MESSAGE: 'message:send',
+  DELETE_MESSAGE: 'message:delete',
   
   // Server -> Client
   SESSION_CREATED: 'session:created',
@@ -59,6 +68,10 @@ export const SOCKET_EVENTS = {
   FILE_DELETED: 'file:deleted',
   FILE_DATA: 'file:data',
   FILE_ERROR: 'file:error',
+  CHUNK_RECEIVED: 'file:chunk-received',
+  UPLOAD_PROGRESS: 'file:upload-progress',
+  MESSAGE_ADDED: 'message:added',
+  MESSAGE_DELETED: 'message:deleted',
   MEMBER_JOINED: 'member:joined',
   MEMBER_LEFT: 'member:left',
   SESSION_INFO: 'session:info'

@@ -6,6 +6,9 @@
 import { SOCKET_EVENTS } from '../config/constants.js';
 import sessionService from '../services/session-service.js';
 import fileService from '../services/file-service.js';
+import chunkService from '../services/chunk-service.js';
+import messageService from '../services/message-service.js';
+import memoryStore from '../storage/memory-store.js';
 import { isValidSessionIdFormat, isValidFileIdFormat } from '../utils/security.js';
 
 /**
@@ -103,22 +106,50 @@ export function initializeSocketHandlers(io) {
       handleLeaveSession(socket, callback);
     });
 
-    // Upload File (Binary data transfer)
+    // Upload File (Binary data transfer with chunking support)
     socket.on(SOCKET_EVENTS.UPLOAD_FILE, (data, callback) => {
       try {
         const sessionId = sessionService.getSocketSession(socket.id);
         
         if (!sessionId) {
-          const error = { success: false, error: 'Not in a session' };
+          const error = { 
+            success: false, 
+            error: 'You must join a session before uploading files. Please create or join a session first.' 
+          };
           if (typeof callback === 'function') callback(error);
           return;
         }
 
-        // Data should contain: buffer (ArrayBuffer), mimeType, filename
-        const { buffer, mimeType, filename } = data || {};
+        // Validate session is still active
+        if (!sessionService.isValidSession(sessionId)) {
+          const error = { 
+            success: false, 
+            error: 'Your session has expired. Please create a new session to continue.' 
+          };
+          if (typeof callback === 'function') callback(error);
+          socket.emit(SOCKET_EVENTS.SESSION_EXPIRED, { reason: 'Session expired during upload' });
+          return;
+        }
+
+        // Data should contain: buffer (ArrayBuffer), mimeType, filename, size
+        const { buffer, mimeType, filename, size } = data || {};
         
         if (!buffer) {
-          const error = { success: false, error: 'No file data provided' };
+          const error = { 
+            success: false, 
+            error: 'No file data received. Please try uploading again.' 
+          };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        // Validate file size
+        const fileSize = size || buffer.byteLength || buffer.length;
+        if (fileSize > 100 * 1024 * 1024) {
+          const error = { 
+            success: false, 
+            error: `This file is ${(fileSize / 1024 / 1024).toFixed(1)}MB, which exceeds the 100MB limit. Please choose a smaller file.` 
+          };
           if (typeof callback === 'function') callback(error);
           return;
         }
@@ -127,17 +158,26 @@ export function initializeSocketHandlers(io) {
         const fileBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
 
         const result = fileService.uploadFile(sessionId, fileBuffer, {
-          mimeType,
-          filename
+          mimeType: mimeType || 'application/octet-stream',
+          filename: filename || 'unnamed-file'
         }, socket.id);
 
         if (!result.success) {
-          if (typeof callback === 'function') callback(result);
-          socket.emit(SOCKET_EVENTS.FILE_ERROR, result);
+          // Provide user-friendly error messages
+          let friendlyError = result.error;
+          if (result.error.includes('memory')) {
+            friendlyError = 'Server memory is full. Please try again in a few minutes or create a new session.';
+          } else if (result.error.includes('maximum')) {
+            friendlyError = `This session has reached its maximum capacity. Please create a new session to continue sharing.`;
+          }
+          
+          const error = { success: false, error: friendlyError };
+          if (typeof callback === 'function') callback(error);
+          socket.emit(SOCKET_EVENTS.FILE_ERROR, error);
           return;
         }
 
-        console.log(`[Socket] File uploaded: ${result.file.id.substring(0, 8)}... to session ${sessionId.substring(0, 8)}...`);
+        console.log(`[Socket] File uploaded: ${result.file.filename} (${(fileSize / 1024).toFixed(1)}KB) to session ${sessionId.substring(0, 8)}...`);
         
         if (typeof callback === 'function') {
           callback({ success: true, file: result.file });
@@ -151,6 +191,196 @@ export function initializeSocketHandlers(io) {
         console.error('[Socket] Error uploading file:', error);
         if (typeof callback === 'function') {
           callback({ success: false, error: 'Failed to upload file' });
+        }
+      }
+    });
+
+    // Upload Start (Chunked Upload)
+    socket.on(SOCKET_EVENTS.UPLOAD_START, (data, callback) => {
+      try {
+        const sessionId = sessionService.getSocketSession(socket.id);
+        
+        if (!sessionId) {
+          const error = { 
+            success: false, 
+            error: 'You must join a session before uploading files.' 
+          };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        // Validate session is still active
+        if (!sessionService.isValidSession(sessionId)) {
+          const error = { 
+            success: false, 
+            error: 'Your session has expired. Please create a new session.' 
+          };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        // Data should contain: filename, mimeType, size, totalChunks
+        const { filename, mimeType, size, totalChunks } = data || {};
+        
+        if (!filename || !size || !totalChunks) {
+          const error = { 
+            success: false, 
+            error: 'Missing required upload information.' 
+          };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        // Validate file size
+        if (size > 100 * 1024 * 1024) {
+          const error = { 
+            success: false, 
+            error: `This file is ${(size / 1024 / 1024).toFixed(1)}MB, which exceeds the 100MB limit.` 
+          };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        const result = chunkService.startUpload(sessionId, {
+          filename,
+          mimeType: mimeType || 'application/octet-stream',
+          size,
+          totalChunks
+        });
+
+        if (!result.success) {
+          const error = { success: false, error: result.error };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        console.log(`[Socket] Chunked upload started: ${filename} (${(size / 1024).toFixed(1)}KB, ${totalChunks} chunks) to session ${sessionId.substring(0, 8)}...`);
+        
+        if (typeof callback === 'function') {
+          callback({ success: true, uploadId: result.uploadId });
+        }
+      } catch (error) {
+        console.error('[Socket] Error starting chunked upload:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to start upload. Please try again.' });
+        }
+      }
+    });
+
+    // Upload Chunk (Chunked Upload)
+    socket.on(SOCKET_EVENTS.UPLOAD_CHUNK, (data, callback) => {
+      try {
+        const sessionId = sessionService.getSocketSession(socket.id);
+        
+        if (!sessionId) {
+          const error = { success: false, error: 'You must join a session before uploading.' };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        // Data should contain: uploadId, chunkIndex, chunkData
+        const { uploadId, chunkIndex, chunkData } = data || {};
+        
+        if (!uploadId || chunkIndex === undefined || !chunkData) {
+          const error = { success: false, error: 'Invalid chunk data.' };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        // Convert ArrayBuffer to Buffer if needed
+        const chunkBuffer = Buffer.isBuffer(chunkData) ? chunkData : Buffer.from(chunkData);
+
+        const result = chunkService.processChunk(uploadId, chunkIndex, chunkBuffer);
+
+        if (!result.success) {
+          const error = { success: false, error: result.error };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        if (typeof callback === 'function') {
+          callback({ 
+            success: true, 
+            receivedChunks: result.receivedChunks,
+            totalChunks: result.totalChunks,
+            isComplete: result.isComplete
+          });
+        }
+
+        // Emit progress update to all session members
+        socket.emit(SOCKET_EVENTS.CHUNK_RECEIVED, {
+          uploadId,
+          chunkIndex,
+          receivedChunks: result.receivedChunks,
+          totalChunks: result.totalChunks,
+          progress: Math.round((result.receivedChunks / result.totalChunks) * 100)
+        });
+
+      } catch (error) {
+        console.error('[Socket] Error processing chunk:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to process chunk. Please try again.' });
+        }
+      }
+    });
+
+    // Upload Complete (Chunked Upload)
+    socket.on(SOCKET_EVENTS.UPLOAD_COMPLETE, (data, callback) => {
+      try {
+        const sessionId = sessionService.getSocketSession(socket.id);
+        
+        if (!sessionId) {
+          const error = { success: false, error: 'You must join a session.' };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        const { uploadId } = data || {};
+        
+        if (!uploadId) {
+          const error = { success: false, error: 'Missing upload ID.' };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        // Assemble chunks into complete file
+        const assembleResult = chunkService.assembleFile(uploadId);
+
+        if (!assembleResult.success) {
+          const error = { success: false, error: assembleResult.error };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        // Upload assembled file to file service
+        const uploadResult = fileService.uploadFile(
+          sessionId, 
+          assembleResult.buffer, 
+          assembleResult.metadata,
+          socket.id
+        );
+
+        if (!uploadResult.success) {
+          const error = { success: false, error: uploadResult.error };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        console.log(`[Socket] Chunked upload completed: ${uploadResult.file.filename} to session ${sessionId.substring(0, 8)}...`);
+        
+        if (typeof callback === 'function') {
+          callback({ success: true, file: uploadResult.file });
+        }
+
+        // Broadcast to all clients in the session
+        io.to(sessionId).emit(SOCKET_EVENTS.FILE_ADDED, {
+          file: uploadResult.file
+        });
+
+      } catch (error) {
+        console.error('[Socket] Error completing chunked upload:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to complete upload. Please try again.' });
         }
       }
     });
@@ -251,6 +481,112 @@ export function initializeSocketHandlers(io) {
         console.error('[Socket] Error deleting file:', error);
         if (typeof callback === 'function') {
           callback({ success: false, error: 'Failed to delete file' });
+        }
+      }
+    });
+
+    // Send Message
+    socket.on(SOCKET_EVENTS.SEND_MESSAGE, async (data, callback) => {
+      try {
+        const sessionId = sessionService.getSocketSession(socket.id);
+        
+        if (!sessionId) {
+          const error = { 
+            success: false, 
+            error: 'You must join a session before sending messages' 
+          };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        const { content } = data || {};
+        
+        // Get session directly from memory store to access members
+        const session = memoryStore.getSession(sessionId);
+        if (!session) {
+          const error = { success: false, error: 'Session not found' };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        // Find sender name from session members
+        let senderName = 'Anonymous';
+        for (const [memberId, member] of session.members) {
+          if (member.socketId === socket.id) {
+            senderName = member.name;
+            break;
+          }
+        }
+        
+        const message = messageService.sendMessage(
+          sessionId,
+          content,
+          socket.id,
+          senderName
+        );
+
+        console.log(`[Socket] Message sent in session ${sessionId.substring(0, 8)}... by ${senderName}`);
+        
+        if (typeof callback === 'function') {
+          callback({ success: true, message });
+        }
+
+        // Broadcast to all clients in the session (including sender)
+        io.to(sessionId).emit(SOCKET_EVENTS.MESSAGE_ADDED, { message });
+      } catch (error) {
+        console.error('[Socket] Error sending message:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: error.message });
+        }
+      }
+    });
+
+    // Delete Message
+    socket.on(SOCKET_EVENTS.DELETE_MESSAGE, async (data, callback) => {
+      try {
+        const sessionId = sessionService.getSocketSession(socket.id);
+        
+        if (!sessionId) {
+          const error = { 
+            success: false, 
+            error: 'You must join a session before deleting messages' 
+          };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        const { messageId } = data || {};
+        
+        if (!messageId) {
+          const error = { success: false, error: 'Message ID is required' };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        // Check if user can delete the message
+        if (!messageService.canDeleteMessage(messageId, socket.id, sessionId)) {
+          const error = { 
+            success: false, 
+            error: 'You can only delete your own messages' 
+          };
+          if (typeof callback === 'function') callback(error);
+          return;
+        }
+
+        messageService.deleteMessage(sessionId, messageId);
+
+        console.log(`[Socket] Message deleted: ${messageId} from session ${sessionId.substring(0, 8)}...`);
+        
+        if (typeof callback === 'function') {
+          callback({ success: true });
+        }
+
+        // Notify all clients in the session
+        io.to(sessionId).emit(SOCKET_EVENTS.MESSAGE_DELETED, { messageId });
+      } catch (error) {
+        console.error('[Socket] Error deleting message:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: error.message });
         }
       }
     });

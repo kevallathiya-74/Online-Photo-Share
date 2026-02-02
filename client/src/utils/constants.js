@@ -7,8 +7,13 @@ export const SOCKET_EVENTS = {
   JOIN_SESSION: 'session:join',
   LEAVE_SESSION: 'session:leave',
   UPLOAD_FILE: 'file:upload',
+  UPLOAD_CHUNK: 'file:upload-chunk',
+  UPLOAD_START: 'file:upload-start',
+  UPLOAD_COMPLETE: 'file:upload-complete',
   DELETE_FILE: 'file:delete',
   REQUEST_FILE: 'file:request',
+  SEND_MESSAGE: 'message:send',
+  DELETE_MESSAGE: 'message:delete',
   
   // Server -> Client
   SESSION_CREATED: 'session:created',
@@ -20,9 +25,13 @@ export const SOCKET_EVENTS = {
   FILE_DELETED: 'file:deleted',
   FILE_DATA: 'file:data',
   FILE_ERROR: 'file:error',
+  CHUNK_RECEIVED: 'file:chunk-received',
+  UPLOAD_PROGRESS: 'file:upload-progress',
   MEMBER_JOINED: 'member:joined',
   MEMBER_LEFT: 'member:left',
-  SESSION_INFO: 'session:info'
+  SESSION_INFO: 'session:info',
+  MESSAGE_ADDED: 'message:added',
+  MESSAGE_DELETED: 'message:deleted'
 };
 
 /**
@@ -30,7 +39,8 @@ export const SOCKET_EVENTS = {
  */
 export const FILE_CONFIG = {
   MAX_SIZE_BYTES: 100 * 1024 * 1024, // 100MB
-  ALLOWED_TYPES: ['*'] // Accept all file types
+  ALLOWED_TYPES: ['*'], // Accept all file types
+  CHUNK_SIZE: 1 * 1024 * 1024 // 1MB chunks for large file uploads
 };
 
 // Legacy support

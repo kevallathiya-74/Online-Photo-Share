@@ -40,6 +40,33 @@ export function formatRelativeTime(timestamp) {
 }
 
 /**
+ * Format distance to now (for messages)
+ */
+export function formatDistanceToNow(date, options = {}) {
+  const now = new Date();
+  const diff = now - date;
+  
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  const addSuffix = options.addSuffix !== false;
+  const suffix = addSuffix ? ' ago' : '';
+  
+  if (seconds < 10) return 'just now';
+  if (seconds < 60) return `${seconds} seconds${suffix}`;
+  if (minutes === 1) return `1 minute${suffix}`;
+  if (minutes < 60) return `${minutes} minutes${suffix}`;
+  if (hours === 1) return `1 hour${suffix}`;
+  if (hours < 24) return `${hours} hours${suffix}`;
+  if (days === 1) return `1 day${suffix}`;
+  if (days < 30) return `${days} days${suffix}`;
+  
+  return date.toLocaleDateString();
+}
+
+/**
  * Format remaining time
  */
 export function formatRemainingTime(expiresAt) {

@@ -4,6 +4,7 @@
  */
 
 import memoryStore from '../storage/memory-store.js';
+import messageService from './message-service.js';
 import { SESSION_CONFIG, MEMORY_CONFIG } from '../config/constants.js';
 
 class CleanupService {
@@ -72,7 +73,7 @@ class CleanupService {
     const duration = Date.now() - startTime;
     const stats = memoryStore.getMemoryStats();
     
-    console.log(`[Cleanup] Completed in ${duration}ms. Memory: ${(stats.totalBytes / 1024 / 1024).toFixed(2)}MB (${stats.usagePercent.toFixed(1)}%), Sessions: ${stats.sessionCount}, Files: ${stats.fileCount}`);
+    console.log(`[Cleanup] Completed in ${duration}ms. Memory: ${(stats.totalBytes / 1024 / 1024).toFixed(2)}MB (${stats.usagePercent.toFixed(1)}%), Sessions: ${stats.sessionCount}, Files: ${stats.fileCount}, Messages: ${stats.messageCount}`);
   }
 
   /**
@@ -87,7 +88,17 @@ class CleanupService {
       });
     }
 
-    // Delete session and all images
+    // Delete all messages in the session
+    try {
+      const deletedCount = messageService.deleteAllMessages(sessionId);
+      if (deletedCount > 0) {
+        console.log(`[Cleanup] Deleted ${deletedCount} messages from session ${sessionId.substring(0, 8)}...`);
+      }
+    } catch (error) {
+      console.error(`[Cleanup] Error deleting messages for session ${sessionId}:`, error);
+    }
+
+    // Delete session and all files
     const deleted = memoryStore.deleteSession(sessionId);
     
     if (deleted) {

@@ -5,6 +5,7 @@ import { useSocket } from './context/SocketContext';
 import { useSession } from './context/SessionContext';
 import { SessionCreate, SessionInfo } from './components/session';
 import { FileUpload, FileGrid } from './components/file';
+import { MessageInput, MessageList } from './components/message';
 import { Button } from './components/ui/Button';
 import { Badge } from './components/ui/Badge';
 import { Alert, AlertDescription } from './components/ui/Alert';
@@ -12,10 +13,22 @@ import { Spinner } from './components/ui/Spinner';
 
 export default function App() {
   const { isConnected } = useSocket();
-  const { session, memberCount, isLoading, error, joinSession, leaveSession, clearError } = useSession();
+  const { 
+    session, 
+    messages, 
+    memberCount, 
+    isLoading, 
+    error, 
+    joinSession, 
+    leaveSession, 
+    sendMessage,
+    deleteMessage,
+    clearError 
+  } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showSidebar, setShowSidebar] = useState(false);
   const [initialJoinAttempted, setInitialJoinAttempted] = useState(false);
+  const [view, setView] = useState('files'); // 'files' or 'messages'
 
   // Handle session from URL (for sharing and PWA share target)
   useEffect(() => {
@@ -132,7 +145,7 @@ export default function App() {
             />
           )}
 
-          {/* Main Content - Image Grid */}
+          {/* Main Content - Files or Messages */}
           <main className="flex-1 min-w-0">
             {/* Error Alert */}
             {error && (
@@ -146,14 +159,61 @@ export default function App() {
               </Alert>
             )}
 
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold">Shared Files</h2>
-              <p className="text-sm text-muted-foreground">
-                Files appear here instantly when shared by any device
-              </p>
+            {/* View Toggle */}
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">
+                  {view === 'files' ? 'Shared Files' : 'Messages'}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {view === 'files' 
+                    ? 'Files appear here instantly when shared by any device'
+                    : 'Send and receive text messages in real-time'
+                  }
+                </p>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant={view === 'files' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setView('files')}
+                >
+                  Files
+                </Button>
+                <Button
+                  variant={view === 'messages' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setView('messages')}
+                >
+                  Messages
+                  {messages.length > 0 && (
+                    <Badge variant="info" className="ml-2 px-2">
+                      {messages.length}
+                    </Badge>
+                  )}
+                </Button>
+              </div>
             </div>
 
-            <FileGrid />
+            {/* File Grid View */}
+            {view === 'files' && <FileGrid />}
+
+            {/* Messages View */}
+            {view === 'messages' && (
+              <div className="flex flex-col h-[calc(100vh-16rem)] border border-gray-200 rounded-lg bg-white">
+                <MessageList 
+                  messages={messages}
+                  currentUserId={isConnected ? session?.id : null}
+                  onDeleteMessage={deleteMessage}
+                  isSessionCreator={false}
+                />
+                <MessageInput 
+                  onSendMessage={sendMessage}
+                  disabled={!isConnected}
+                />
+              </div>
+            )}
           </main>
         </div>
       </div>

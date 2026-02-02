@@ -206,7 +206,7 @@ export function FileGrid() {
       const result = await requestFile(file.id);
       if (result?.file?.buffer) {
         const blob = new Blob([result.file.buffer], { type: file.mimeType });
-        downloadBlob(blob, file.filename);
+        downloadBlob(blob, file.filename); // downloadBlob handles its own cleanup
       }
     } catch (err) {
       console.error('Failed to download file:', err);
@@ -224,8 +224,13 @@ export function FileGrid() {
   }, [deleteFile]);
 
   const closeViewer = useCallback(() => {
+    // Clean up blob URL before closing
+    if (viewingFileUrl) {
+      URL.revokeObjectURL(viewingFileUrl);
+      setViewingFileUrl(null);
+    }
     setViewingFile(null);
-  }, []);
+  }, [viewingFileUrl]);
 
   if (files.length === 0) {
     return (
@@ -292,8 +297,15 @@ export function FileGrid() {
                     <video
                       src={viewingFileUrl}
                       controls
-                      className="w-full max-h-[70vh]"
-                    />
+                      preload="metadata"
+                      playsInline
+                      className="w-full max-h-[70vh] bg-black"
+                      onError={(e) => {
+                        console.error('Video playback error:', e);
+                      }}
+                    >
+                      Your browser does not support video playback.
+                    </video>
                   )}
                   {viewingFile.mimeType.startsWith('audio/') && (
                     <div className="p-8">

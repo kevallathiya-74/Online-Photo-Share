@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useSocket } from './SocketContext';
 import { SOCKET_EVENTS } from '../utils/constants';
+import { uploadFileChunked } from '../utils/chunkedUpload';
 
 const SessionContext = createContext(null);
 
@@ -17,6 +18,7 @@ export function SessionProvider({ children }) {
   
   const [session, setSession] = useState(null);
   const [files, setFiles] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [memberCount, setMemberCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -38,6 +40,7 @@ export function SessionProvider({ children }) {
           expiresAt: result.expiresAt
         });
         setFiles([]);
+        setMessages([]);
         setMemberCount(1);
         console.log('[Session] Session state updated:', result.sessionId);
       }
@@ -64,6 +67,7 @@ export function SessionProvider({ children }) {
         expiresAt: result.expiresAt
       });
       setFiles(result.files || []);
+      setMessages(result.messages || []);
       setMemberCount(result.memberCount || 1);
       return result;
     } catch (err) {
@@ -87,26 +91,25 @@ export function SessionProvider({ children }) {
     // Always clear state
     setSession(null);
     setFiles([]);
+    setMessages([]);
     setMemberCount(0);
   }, [emit]);
 
-  // Upload a file
-  const uploadFile = useCallback(async (file) => {
+  // Send a message
+  const sendMessage = useCallback(async (content) => {
     if (!session) {
       throw new Error('Not in a session');
     }
 
-    setError(null);
-    
     try {
-      // Read file as ArrayBuffer
-      const buffer = await file.arrayBuffer();
-      
-      const result = await emit(SOCKET_EVENTS.UPLOAD_FILE, {
-        buffer: buffer,
-        mimeType: file.type,
-        filename: file.name
+      const result = await emit(SOCKET_EVENTS.SEND_MESSAGE, { 
+        sessionId: session.id, 
+        content 
       });
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to send message');
+      }
       
       return result;
     } catch (err) {
@@ -114,6 +117,52 @@ export function SessionProvider({ children }) {
       throw err;
     }
   }, [emit, session]);
+
+  // Delete a message
+  const deleteMessage = useCallback(async (messageId) => {
+    if (!session) {
+      throw new Error('Not in a session');
+    }
+
+    try {
+      const result = await emit(SOCKET_EVENTS.DELETE_MESSAGE, { 
+        sessionId: session.id, 
+        messageId 
+      });
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete message');
+      }
+      
+      return result;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  }, [emit, session]);
+
+  // Upload a file with chunking support
+  const uploadFile = useCallback(async (file, onProgress) => {
+    if (!session) {
+      throw new Error('Not in a session');
+    }
+
+    setError(null);
+    
+    try {
+      // Use chunked upload utility (auto-selects chunked vs direct)
+      const result = await uploadFileChunked(file, { emit, on }, onProgress);
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      return result;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  }, [emit, on, session]);
 
   // Request file data for download
   const requestFile = useCallback(async (fileId) => {
@@ -160,6 +209,16 @@ export function SessionProvider({ children }) {
       setFiles(prev => prev.filter(f => f.id !== data.fileId));
     }));
 
+    // Message added
+    cleanups.push(on(SOCKET_EVENTS.MESSAGE_ADDED, (data) => {
+      setMessages(prev => [...prev, data.message]);
+    }));
+
+    // Message deleted
+    cleanups.push(on(SOCKET_EVENTS.MESSAGE_DELETED, (data) => {
+      setMessages(prev => prev.filter(m => m.id !== data.messageId));
+    }));
+
     // Member joined
     cleanups.push(on(SOCKET_EVENTS.MEMBER_JOINED, (data) => {
       setMemberCount(data.memberCount);
@@ -174,6 +233,7 @@ export function SessionProvider({ children }) {
     cleanups.push(on(SOCKET_EVENTS.SESSION_EXPIRED, () => {
       setSession(null);
       setFiles([]);
+      setMessages([]);
       setMemberCount(0);
       setError('Session has expired');
     }));
@@ -191,6 +251,7 @@ export function SessionProvider({ children }) {
   const value = {
     session,
     files,
+    messages,
     memberCount,
     isLoading,
     error,
@@ -200,6 +261,8 @@ export function SessionProvider({ children }) {
     uploadFile,
     requestFile,
     deleteFile,
+    sendMessage,
+    deleteMessage,
     clearError: () => setError(null)
   };
 

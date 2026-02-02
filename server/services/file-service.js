@@ -10,17 +10,33 @@ import { FILE_CONFIG } from '../config/constants.js';
 
 class FileService {
   /**
-   * Process and store an uploaded file (ANY type)
+   * Process and store an uploaded file (ANY type) with production-grade validation
    */
   uploadFile(sessionId, fileBuffer, metadata, uploadedBy) {
     // Validate buffer
     if (!fileBuffer || !Buffer.isBuffer(fileBuffer)) {
-      return { success: false, error: 'Invalid file data' };
+      return { 
+        success: false, 
+        error: 'Invalid file data. Please try uploading again.' 
+      };
     }
 
-    // Check size
+    // Check size with user-friendly message
     if (fileBuffer.length > FILE_CONFIG.MAX_SIZE_BYTES) {
-      return { success: false, error: `File exceeds maximum size of ${FILE_CONFIG.MAX_SIZE_BYTES / 1024 / 1024}MB` };
+      const fileSizeMB = (fileBuffer.length / 1024 / 1024).toFixed(1);
+      const maxSizeMB = (FILE_CONFIG.MAX_SIZE_BYTES / 1024 / 1024).toFixed(0);
+      return { 
+        success: false, 
+        error: `This file is ${fileSizeMB}MB, which exceeds the ${maxSizeMB}MB limit. Please choose a smaller file.` 
+      };
+    }
+
+    // Validate file is not empty
+    if (fileBuffer.length === 0) {
+      return {
+        success: false,
+        error: 'Cannot upload empty file. Please select a valid file.'
+      };
     }
 
     // Generate file ID
@@ -30,17 +46,41 @@ class FileService {
     const mimeType = metadata?.mimeType || 'application/octet-stream';
 
     // Sanitize filename
-    const filename = sanitizeFilename(metadata?.filename) || `file-${fileId}${this.getExtension(mimeType)}`;
+    let filename = sanitizeFilename(metadata?.filename) || `file-${Date.now()}${this.getExtension(mimeType)}`;
+    
+    // Ensure filename has proper extension
+    if (!filename.includes('.')) {
+      filename += this.getExtension(mimeType);
+    }
 
-    // Store file
-    const result = memoryStore.addFile(sessionId, fileId, {
-      buffer: fileBuffer,
-      mimeType,
-      filename,
-      uploadedBy
-    });
+    // Store file with error handling
+    try {
+      const result = memoryStore.addFile(sessionId, fileId, {
+        buffer: fileBuffer,
+        mimeType,
+        filename,
+        uploadedBy
+      });
 
-    return result;
+      if (!result.success) {
+        // Memory-related errors get user-friendly messages
+        if (result.error.includes('memory') || result.error.includes('capacity')) {
+          return {
+            success: false,
+            error: 'Server storage is currently full. Please try again in a few minutes or create a new session.'
+          };
+        }
+        return result;
+      }
+
+      return result;
+    } catch (error) {
+      console.error('[FileService] Upload error:', error);
+      return {
+        success: false,
+        error: 'Failed to upload file. Please check your connection and try again.'
+      };
+    }
   }
 
   /**

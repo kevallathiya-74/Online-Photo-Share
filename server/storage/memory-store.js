@@ -10,9 +10,13 @@ import { SESSION_CONFIG, FILE_CONFIG, MEMORY_CONFIG } from '../config/constants.
  * Session structure:
  * {
  *   id: string,
+ *   code: string,
  *   createdAt: number (timestamp),
  *   expiresAt: number (timestamp),
+ *   creatorId: string (socketId),
+ *   creatorName: string,
  *   files: Map<fileId, FileData>,
+ *   messages: Array<TextMessage>,
  *   members: Set<socketId>
  * }
  * 
@@ -25,6 +29,16 @@ import { SESSION_CONFIG, FILE_CONFIG, MEMORY_CONFIG } from '../config/constants.
  *   size: number,
  *   uploadedAt: number (timestamp),
  *   uploadedBy: string (socketId)
+ * }
+ * 
+ * TextMessage structure:
+ * {
+ *   id: string,
+ *   content: string,
+ *   sentBy: string (socketId),
+ *   sentByName: string,
+ *   sentAt: number (timestamp),
+ *   sessionId: string
  * }
  */
 
@@ -49,7 +63,8 @@ class MemoryStore {
       maxBytes: MEMORY_CONFIG.MAX_TOTAL_BYTES,
       usagePercent: (this.totalMemoryUsage / MEMORY_CONFIG.MAX_TOTAL_BYTES) * 100,
       sessionCount: this.sessions.size,
-      fileCount: this.getTotalFileCount()
+      fileCount: this.getTotalFileCount(),
+      messageCount: this.getTotalMessageCount()
     };
   }
 
@@ -60,6 +75,17 @@ class MemoryStore {
     let count = 0;
     for (const session of this.sessions.values()) {
       count += session.files.size;
+    }
+    return count;
+  }
+
+  /**
+   * Get total message count across all sessions
+   */
+  getTotalMessageCount() {
+    let count = 0;
+    for (const session of this.sessions.values()) {
+      count += (session.messages || []).length;
     }
     return count;
   }
@@ -81,13 +107,17 @@ class MemoryStore {
   /**
    * Create a new session
    */
-  createSession(sessionId) {
+  createSession(sessionId, code, creatorId, creatorName) {
     const now = Date.now();
     const session = {
       id: sessionId,
+      code: code,
       createdAt: now,
       expiresAt: now + SESSION_CONFIG.TTL_MS,
+      creatorId: creatorId,
+      creatorName: creatorName || 'Anonymous',
       files: new Map(),
+      messages: [],
       members: new Set()
     };
     

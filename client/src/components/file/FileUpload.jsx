@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from 'react';
-import { Upload, Camera, FileIcon, X, AlertCircle, File } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Upload, Camera, FileIcon, X, AlertCircle, File, CheckCircle } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { Button } from '../ui/Button';
 import { Alert, AlertDescription } from '../ui/Alert';
@@ -13,18 +13,50 @@ export function FileUpload() {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadQueue, setUploadQueue] = useState([]);
   const [errors, setErrors] = useState([]);
+  const [cameraSupported, setCameraSupported] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+
+  // Check camera support on mount
+  useEffect(() => {
+    const checkCameraSupport = async () => {
+      try {
+        // Check if getUserMedia is supported
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          setCameraSupported(true);
+        } else {
+          // Fallback: check if input[capture] is supported (mobile)
+          const input = document.createElement('input');
+          input.setAttribute('capture', 'camera');
+          setCameraSupported('capture' in input);
+        }
+      } catch (err) {
+        setCameraSupported(false);
+      }
+    };
+    checkCameraSupport();
+  }, []);
 
   const validateFile = (file) => {
     // No MIME type restrictions - accept all files
     if (file.size > FILE_CONFIG.MAX_SIZE_BYTES) {
-      return `${file.name}: File too large (max ${formatFileSize(FILE_CONFIG.MAX_SIZE_BYTES)})`;
+      const fileSizeMB = (file.size / 1024 / 1024).toFixed(1);
+      const maxSizeMB = (FILE_CONFIG.MAX_SIZE_BYTES / 1024 / 1024).toFixed(0);
+      return `${file.name} is ${fileSizeMB}MB, which exceeds the ${maxSizeMB}MB limit. Please choose a smaller file.`;
+    }
+    if (file.size === 0) {
+      return `${file.name} is empty and cannot be uploaded.`;
     }
     return null;
   };
 
   const processFiles = useCallback(async (files) => {
+    if (!session) {
+      setErrors(prev => [...prev, 'Please create or join a session before uploading files.']);
+      setTimeout(() => setErrors([]), 5000);
+      return;
+    }
+
     const fileList = Array.from(files);
     const newErrors = [];
     const validFiles = [];
@@ -41,24 +73,48 @@ export function FileUpload() {
 
     if (newErrors.length > 0) {
       setErrors(prev => [...prev, ...newErrors]);
-      setTimeout(() => setErrors([]), 5000);
+      setTimeout(() => setErrors(prev => prev.filter(e => !newErrors.includes(e))), 7000);
     }
 
-    // Upload valid files
+    // Upload valid files with progress tracking
     for (const file of validFiles) {
-      const id = `${Date.now()}-${file.name}`;
+      const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
-      setUploadQueue(prev => [...prev, { id, name: file.name, progress: 0 }]);
+      setUploadQueue(prev => [...prev, { 
+        id, 
+        name: file.name, 
+        size: file.size,
+        progress: 0,
+        status: 'uploading'
+      }]);
       
       try {
-        await uploadFile(file);
-        setUploadQueue(prev => prev.filter(item => item.id !== id));
+        // Use real progress tracking from chunked upload
+        await uploadFile(file, (progress, status) => {
+          setUploadQueue(prev => prev.map(item => 
+            item.id === id ? { ...item, progress, status } : item
+          ));
+        });
+        
+        // Remove from queue after success
+        setTimeout(() => {
+          setUploadQueue(prev => prev.filter(item => item.id !== id));
+        }, 2000);
+        
       } catch (err) {
-        setErrors(prev => [...prev, `${file.name}: ${err.message}`]);
-        setUploadQueue(prev => prev.filter(item => item.id !== id));
+        const errorMessage = err.message || 'Upload failed. Please check your connection and try again.';
+        setErrors(prev => [...prev, `${file.name}: ${errorMessage}`]);
+        setUploadQueue(prev => prev.map(item => 
+          item.id === id ? { ...item, status: 'error', progress: 0 } : item
+        ));
+        
+        setTimeout(() => {
+          setUploadQueue(prev => prev.filter(item => item.id !== id));
+          setErrors(prev => prev.filter(e => !e.includes(file.name)));
+        }, 7000);
       }
     }
-  }, [uploadFile]);
+  }, [uploadFile, session]);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -109,6 +165,68 @@ export function FileUpload() {
 
     if (files.length > 0) {
       processFiles(files);
+    }
+  }, [processFiles]);
+
+  // Camera capture handler
+  const handleCameraCapture = useCallback(async () => {
+    try {
+      // Modern browsers with getUserMedia
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'environment' }, // Prefer back camera on mobile
+            audio: false 
+          });
+          
+          // Create video element to capture
+          const video = document.createElement('video');
+          video.srcObject = stream;
+          video.play();
+
+          // Wait for video to load
+          await new Promise(resolve => {
+            video.onloadedmetadata = resolve;
+          });
+
+          // Create canvas and capture frame
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0);
+
+          // Stop camera stream
+          stream.getTracks().forEach(track => track.stop());
+
+          // Convert to blob
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+              processFiles([file]);
+            }
+          }, 'image/jpeg', 0.9);
+          
+        } catch (err) {
+          console.error('Camera error:', err);
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            setErrors(prev => [...prev, 'Camera access denied. Please enable camera permissions in your browser settings.']);
+          } else if (err.name === 'NotFoundError') {
+            setErrors(prev => [...prev, 'No camera found on your device.']);
+          } else {
+            // Fallback to file input with capture attribute
+            cameraInputRef.current?.click();
+          }
+          setTimeout(() => setErrors([]), 7000);
+        }
+      } else {
+        // Fallback for older mobile browsers
+        cameraInputRef.current?.click();
+      }
+    } catch (err) {
+      console.error('Camera capture error:', err);
+      setErrors(prev => [...prev, 'Failed to access camera. Please try using the file picker instead.']);
+      setTimeout(() => setErrors([]), 7000);
     }
   }, [processFiles]);
 
@@ -173,58 +291,89 @@ export function FileUpload() {
               {isDragging ? 'Drop files here' : 'Drag & drop any files'}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              or click to browse • Paste from clipboard
+              or click to browse • paste with Ctrl+V • up to 100MB per file
             </p>
           </div>
           
-          <div className="text-xs text-muted-foreground">
-            Images, videos, PDFs, documents, and more
-            <br />
-            Max {formatFileSize(FILE_CONFIG.MAX_SIZE_BYTES)} per file
+          <div className="flex gap-2 justify-center">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+            >
+              <FileIcon className="h-4 w-4 mr-2" />
+              Browse Files
+            </Button>
+            
+            {cameraSupported && (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCameraCapture();
+                  }}
+                >
+                  <Camera className="h-4 w-4 mr-2" />
+                  Camera
+                </Button>
+                
+                {/* Hidden camera input as fallback */}
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex gap-2">
-        <Button
-          variant="secondary"
-          className="flex-1"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <File className="h-4 w-4 mr-2" />
-          Browse Files
-        </Button>
-        
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*,video/*"
-          capture="environment"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-        <Button
-          variant="secondary"
-          className="flex-1"
-          onClick={() => cameraInputRef.current?.click()}
-        >
-          <Camera className="h-4 w-4 mr-2" />
-          Camera
-        </Button>
-      </div>
-
-      {/* Upload Queue */}
+      {/* Upload Queue with Progress */}
       {uploadQueue.length > 0 && (
         <div className="space-y-2">
-          {uploadQueue.map(item => (
+          {uploadQueue.map((item) => (
             <div 
-              key={item.id}
-              className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10"
+              key={item.id} 
+              className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10"
             >
-              <Spinner size="sm" />
-              <span className="text-sm truncate flex-1">{item.name}</span>
-              <span className="text-xs text-muted-foreground">Uploading...</span>
+              {item.status === 'success' ? (
+                <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+              ) : item.status === 'error' ? (
+                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+              ) : (
+                <Spinner size="sm" className="flex-shrink-0" />
+              )}
+              
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{item.name}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div 
+                      className={cn(
+                        "h-full transition-all duration-300 rounded-full",
+                        item.status === 'success' ? 'bg-green-500' :
+                        item.status === 'error' ? 'bg-red-500' :
+                        'bg-primary'
+                      )}
+                      style={{ width: `${item.progress}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {item.status === 'success' ? 'Done' :
+                     item.status === 'error' ? 'Failed' :
+                     `${item.progress}%`}
+                  </span>
+                </div>
+              </div>
             </div>
           ))}
         </div>
