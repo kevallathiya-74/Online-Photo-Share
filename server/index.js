@@ -41,7 +41,7 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
   ? true  // Allow all origins in production (same-origin requests from static files)
   : ['http://localhost:5173', 'http://127.0.0.1:5173', `http://${process.env.HOST || 'localhost'}:5173`];
 
-// Initialize Socket.IO
+// Initialize Socket.IO with production-optimized settings
 const io = new SocketIOServer(httpServer, {
   cors: {
     origin: allowedOrigins,
@@ -49,8 +49,31 @@ const io = new SocketIOServer(httpServer, {
     credentials: true
   },
   maxHttpBufferSize: FILE_CONFIG.MAX_SIZE_BYTES + 1024 * 1024, // File size + 1MB metadata
-  pingTimeout: 60000,
-  pingInterval: 25000
+  
+  // Connection timeouts optimized for Render/cloud deployment
+  pingTimeout: 120000, // 2 minutes - longer for slow networks
+  pingInterval: 25000, // 25 seconds - keep connection alive
+  
+  // Transport settings for load balancers
+  transports: ['websocket', 'polling'], // Prefer websocket
+  allowUpgrades: true,
+  upgradeTimeout: 30000, // 30 seconds to upgrade
+  
+  // Connection settings
+  connectTimeout: 45000, // 45 seconds connection timeout
+  
+  // Enable sticky sessions support
+  cookie: {
+    name: 'io',
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax'
+  },
+  
+  // Reliability settings
+  perMessageDeflate: {
+    threshold: 1024 // Compress messages > 1KB
+  }
 });
 
 // Middleware
@@ -92,6 +115,11 @@ app.get('/health', (req, res) => {
 // Health check endpoint with stats
 app.get('/api/health', (req, res) => {
   const stats = cleanupService.getStats();
+  const socketStats = {
+    connected: io.engine.clientsCount || 0,
+    rooms: io.sockets.adapter.rooms.size || 0
+  };
+  
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -101,7 +129,8 @@ app.get('/api/health', (req, res) => {
       usagePercent: stats.usagePercent.toFixed(1)
     },
     sessions: stats.sessionCount,
-    files: stats.fileCount
+    files: stats.fileCount,
+    connections: socketStats
   });
 });
 

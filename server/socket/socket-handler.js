@@ -15,8 +15,16 @@ import { isValidSessionIdFormat, isValidFileIdFormat } from '../utils/security.j
  * Initialize Socket.IO handlers
  */
 export function initializeSocketHandlers(io) {
+  // Track connection counts for monitoring
+  let connectionCount = 0;
+  
   io.on('connection', (socket) => {
-    console.log(`[Socket] Client connected: ${socket.id}`);
+    connectionCount++;
+    
+    // Only log connections in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[Socket] Client connected: ${socket.id}`);
+    }
 
     // Create Session
     socket.on(SOCKET_EVENTS.CREATE_SESSION, (data, callback) => {
@@ -33,7 +41,10 @@ export function initializeSocketHandlers(io) {
         socket.join(result.sessionId);
         sessionService.joinSession(result.sessionId, socket.id);
         
-        console.log(`[Socket] Session created: ${result.sessionId.substring(0, 8)}...`);
+        // Only log in development or with abbreviated ID
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[Socket] Session created: ${result.sessionId}`);
+        }
         
         if (typeof callback === 'function') {
           callback({ success: true, ...result });
@@ -593,7 +604,14 @@ export function initializeSocketHandlers(io) {
 
     // Handle disconnect
     socket.on('disconnect', (reason) => {
-      console.log(`[Socket] Client disconnected: ${socket.id}, reason: ${reason}`);
+      // Only log problematic disconnects in production
+      if (process.env.NODE_ENV !== 'production' || 
+          (reason !== 'client namespace disconnect' && reason !== 'transport close')) {
+        // Log unexpected disconnects (ping timeout, transport error)
+        if (reason === 'ping timeout' || reason === 'transport error') {
+          console.warn(`[Socket] Client ${socket.id.substring(0, 8)} disconnect: ${reason}`);
+        }
+      }
       handleLeaveSession(socket);
     });
   });
@@ -616,7 +634,10 @@ export function initializeSocketHandlers(io) {
         });
       }
 
-      console.log(`[Socket] Client ${socket.id} left session: ${sessionId.substring(0, 8)}...`);
+      // Only log in development
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[Socket] Client ${socket.id} left session: ${sessionId.substring(0, 8)}...`);
+      }
     }
 
     if (typeof callback === 'function') {
