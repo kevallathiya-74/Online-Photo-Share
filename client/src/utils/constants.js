@@ -40,7 +40,8 @@ export const SOCKET_EVENTS = {
 export const FILE_CONFIG = {
   MAX_SIZE_BYTES: 100 * 1024 * 1024, // 100MB
   ALLOWED_TYPES: ['*'], // Accept all file types
-  CHUNK_SIZE: 1 * 1024 * 1024 // 1MB chunks for large file uploads
+  CHUNK_SIZE: 2 * 1024 * 1024, // 2MB chunks for faster uploads
+  MAX_PARALLEL_CHUNKS: 3 // Upload 3 chunks in parallel
 };
 
 // Legacy support

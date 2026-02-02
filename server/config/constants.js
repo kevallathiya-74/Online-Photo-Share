@@ -28,8 +28,8 @@ export const FILE_CONFIG = {
   ALLOWED_TYPES: ['*'],
   // File ID length in bytes
   ID_LENGTH: 16,
-  // Chunk size for large file uploads: 1MB
-  CHUNK_SIZE: 1 * 1024 * 1024
+  // Chunk size for large file uploads: 2MB for faster transfers
+  CHUNK_SIZE: 2 * 1024 * 1024
 };
 
 // Deprecated: keeping for backwards compatibility

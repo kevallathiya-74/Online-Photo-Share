@@ -71,8 +71,15 @@ export function SessionProvider({ children }) {
       setMemberCount(result.memberCount || 1);
       return result;
     } catch (err) {
-      setError(err.message);
-      throw err;
+      // Provide user-friendly error messages
+      let errorMessage = err.message;
+      if (errorMessage.includes('Session not found') || errorMessage.includes('Invalid session')) {
+        errorMessage = `Session "${sessionId}" not found. It may have expired or doesn't exist.`;
+      } else if (errorMessage.includes('expired')) {
+        errorMessage = `Session "${sessionId}" has expired. Sessions last for 5 hours.`;
+      }
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -235,7 +242,7 @@ export function SessionProvider({ children }) {
       setFiles([]);
       setMessages([]);
       setMemberCount(0);
-      setError('Session has expired');
+      setError('Session has expired after 5 hours of inactivity. Create a new session to continue.');
     }));
 
     // Session error

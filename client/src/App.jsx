@@ -10,6 +10,7 @@ import { Button } from './components/ui/Button';
 import { Badge } from './components/ui/Badge';
 import { Alert, AlertDescription } from './components/ui/Alert';
 import { Spinner } from './components/ui/Spinner';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './components/ui/Card';
 
 export default function App() {
   const { isConnected } = useSocket();
@@ -30,6 +31,11 @@ export default function App() {
   const [initialJoinAttempted, setInitialJoinAttempted] = useState(false);
   const [view, setView] = useState('files'); // 'files' or 'messages'
   const [isLeaving, setIsLeaving] = useState(false);
+  const [lastSessionId, setLastSessionId] = useState(() => {
+    // Remember last session ID for rejoin capability
+    return localStorage.getItem('lastSessionId') || null;
+  });
+  const [sessionExpired, setSessionExpired] = useState(false);
   const leavingRef = useRef(false); // Use ref to block auto-join during leave
 
   // Auto-close sidebar on mobile after file upload success
@@ -49,10 +55,19 @@ export default function App() {
     
     if (sessionId && !session && !initialJoinAttempted && isConnected) {
       setInitialJoinAttempted(true);
+      // Store session ID for potential rejoin
+      setLastSessionId(sessionId);
+      localStorage.setItem('lastSessionId', sessionId);
+      
       joinSession(sessionId).catch((err) => {
         console.error('Failed to join session:', err);
         // Clear the session param on error
         setSearchParams({});
+        
+        // Check if session expired/not found
+        if (err.message.includes('not found') || err.message.includes('expired')) {
+          setSessionExpired(true);
+        }
       });
     }
     
@@ -78,11 +93,13 @@ export default function App() {
     leavingRef.current = true;
     setIsLeaving(true);
     setInitialJoinAttempted(false);
+    setSessionExpired(false);
     
     // Clear URL and leave session
     setSearchParams({});
     await leaveSession();
     
+    // Don't clear lastSessionId - user might want to rejoin
     if (clearError) clearError();
     setIsLeaving(false);
     
@@ -103,9 +120,63 @@ export default function App() {
     );
   }
 
+  // Show session expired dialog with rejoin option
+  if (!session && sessionExpired && lastSessionId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="glass border-white/10 max-w-md w-full">
+          <CardHeader>
+            <CardTitle className="text-center">Session Expired</CardTitle>
+            <CardDescription className="text-center">
+              The session <span className="font-mono text-sm">{lastSessionId}</span> has ended or expired.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert>
+              <AlertDescription>
+                Sessions automatically expire after 5 hours of inactivity or when all devices leave.
+              </AlertDescription>
+            </Alert>
+            
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground text-center">
+                Would you like to create a new session or join a different one?
+              </p>
+              
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={() => {
+                    setSessionExpired(false);
+                    localStorage.removeItem('lastSessionId');
+                    setLastSessionId(null);
+                  }}
+                  size="lg"
+                  className="w-full"
+                >
+                  Create New Session
+                </Button>
+                
+                <Button
+                  onClick={() => {
+                    setSessionExpired(false);
+                  }}
+                  variant="outline"
+                  size="lg"
+                  className="w-full"
+                >
+                  Join Different Session
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Show session create/join if no active session
   if (!session) {
-    return <SessionCreate />;
+    return <SessionCreate lastSessionId={lastSessionId} />;
   }
 
   return (

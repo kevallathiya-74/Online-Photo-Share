@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '../ui/Alert';
 import { Spinner } from '../ui/Spinner';
 import { Badge } from '../ui/Badge';
 
-export function SessionCreate({ onSessionCreated }) {
+export function SessionCreate({ onSessionCreated, lastSessionId }) {
   const { isConnected, connectionError } = useSocket();
   const { createSession, joinSession, isLoading, error, clearError } = useSession();
   const [joinSessionId, setJoinSessionId] = useState('');
@@ -138,9 +138,18 @@ export function SessionCreate({ onSessionCreated }) {
             {/* Join Mode */}
             {mode === 'join' && (
               <form onSubmit={handleJoin} className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Enter the session ID to join and start sharing files.
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Enter the session ID to join and start sharing files.
+                  </p>
+                  {lastSessionId && (
+                    <Alert>
+                      <AlertDescription className="text-xs">
+                        Last session: <span className="font-mono">{lastSessionId}</span>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
                 <Input
                   type="text"
                   placeholder="Paste session ID here..."
