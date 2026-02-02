@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import { Download, Trash2, Maximize2, X, FileIcon, FileText, Film, Music, Archive, File } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { Button } from '../ui/Button';
-import { Dialog, DialogContent } from '../ui/Dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/Dialog';
 import { Spinner } from '../ui/Spinner';
 import { formatFileSize, formatRelativeTime, downloadBlob } from '../../utils/helpers';
 
@@ -33,11 +33,13 @@ const FileItem = memo(({ file, onView, onDownload, onDelete }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { requestFile } = useSession();
   const isImage = file.mimeType.startsWith('image/');
+  const isVideo = file.mimeType.startsWith('video/');
+  const hasVisualPreview = isImage || isVideo;
   const Icon = getFileIcon(file.mimeType);
 
-  // Load thumbnail for images
+  // Load thumbnail for images and videos
   useEffect(() => {
-    if (!isImage) {
+    if (!hasVisualPreview) {
       setIsLoading(false);
       return;
     }
@@ -50,7 +52,39 @@ const FileItem = memo(({ file, onView, onDownload, onDelete }) => {
         if (mounted && result?.file?.buffer) {
           const blob = new Blob([result.file.buffer], { type: file.mimeType });
           const url = URL.createObjectURL(blob);
-          setThumbnail(url);
+          
+          if (isVideo) {
+            // Generate video thumbnail
+            const video = document.createElement('video');
+            video.src = url;
+            video.currentTime = 1; // Seek to 1 second for thumbnail
+            video.muted = true;
+            
+            video.onloadeddata = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(video, 0, 0);
+              
+              canvas.toBlob((thumbBlob) => {
+                if (thumbBlob && mounted) {
+                  const thumbUrl = URL.createObjectURL(thumbBlob);
+                  setThumbnail(thumbUrl);
+                  URL.revokeObjectURL(url);
+                }
+              }, 'image/jpeg', 0.8);
+            };
+            
+            video.onerror = () => {
+              if (mounted) {
+                setThumbnail(url); // Fallback to video URL
+              }
+            };
+          } else {
+            // For images, use the blob URL directly
+            setThumbnail(url);
+          }
         }
       } catch (err) {
         console.error('Failed to load thumbnail:', err);
@@ -67,37 +101,51 @@ const FileItem = memo(({ file, onView, onDownload, onDelete }) => {
         URL.revokeObjectURL(thumbnail);
       }
     };
-  }, [file.id, file.mimeType, isImage, requestFile]);
+  }, [file.id, file.mimeType, hasVisualPreview, isVideo, requestFile]);
 
   return (
     <div className="group relative rounded-xl overflow-hidden bg-white/5 border border-white/10 image-grid-item animate-scale-in">
       {/* File Preview/Icon */}
       <div 
-        className="aspect-square cursor-pointer"
+        className="aspect-square cursor-pointer relative"
         onClick={() => canPreview(file.mimeType) ? onView(file) : onDownload(file)}
       >
-        {isImage ? (
+        {hasVisualPreview ? (
           isLoading ? (
-            <div className="w-full h-full flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center bg-black/20">
               <Spinner size="lg" />
             </div>
           ) : thumbnail ? (
-            <img
-              src={thumbnail}
-              alt={file.filename}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
+            <>
+              <img
+                src={thumbnail}
+                alt={file.filename}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+              {isVideo && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="bg-black/60 rounded-full p-3">
+                    <Film className="h-8 w-8 text-white" />
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center bg-black/20">
               <Icon className="h-12 w-12 text-muted-foreground" />
             </div>
           )
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-4">
-            <Icon className="h-12 w-12 text-muted-foreground mb-2" />
-            <p className="text-xs text-center text-muted-foreground truncate w-full">
+          <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10">
+            <div className="bg-white/10 rounded-2xl p-4 mb-3">
+              <Icon className="h-12 w-12 text-white/80" />
+            </div>
+            <p className="text-xs text-center text-white/70 font-medium truncate w-full px-2">
               {file.filename}
+            </p>
+            <p className="text-xs text-center text-white/50 mt-1">
+              {formatFileSize(file.size)}
             </p>
           </div>
         )}
@@ -264,6 +312,10 @@ export function FileGrid() {
       {viewingFile && (
         <Dialog open={!!viewingFile} onOpenChange={closeViewer}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+            <DialogTitle className="sr-only">{viewingFile.filename}</DialogTitle>
+            <DialogDescription className="sr-only">
+              File preview for {viewingFile.filename} - {formatFileSize(viewingFile.size)}
+            </DialogDescription>
             <div className="space-y-4">
               {/* Header */}
               <div className="flex items-start justify-between gap-4">

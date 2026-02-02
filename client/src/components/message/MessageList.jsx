@@ -48,7 +48,7 @@ export function MessageList({ messages, currentUserId, onDeleteMessage, isSessio
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8 text-gray-500">
+      <div className="flex-1 flex items-center justify-center p-8 text-muted-foreground">
         <div className="text-center">
           <p className="text-lg mb-2">No messages yet</p>
           <p className="text-sm">Start the conversation by sending a message below</p>
@@ -72,22 +72,22 @@ export function MessageList({ messages, currentUserId, onDeleteMessage, isSessio
             <div
               className={`max-w-[70%] rounded-lg p-3 ${
                 isOwnMessage
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-900'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white/10 text-white border border-white/20'
               }`}
             >
               {/* Sender name and timestamp */}
               <div className="flex items-baseline justify-between gap-2 mb-1">
                 <span
                   className={`text-sm font-semibold ${
-                    isOwnMessage ? 'text-blue-100' : 'text-gray-700'
+                    isOwnMessage ? 'text-blue-100' : 'text-white/90'
                   }`}
                 >
                   {isOwnMessage ? 'You' : message.sentByName}
                 </span>
                 <span
                   className={`text-xs ${
-                    isOwnMessage ? 'text-blue-200' : 'text-gray-500'
+                    isOwnMessage ? 'text-blue-200' : 'text-white/60'
                   }`}
                 >
                   {formatTimestamp(message.sentAt)}
@@ -107,8 +107,8 @@ export function MessageList({ messages, currentUserId, onDeleteMessage, isSessio
                   size="sm"
                   className={`h-7 px-2 ${
                     isOwnMessage
-                      ? 'text-blue-100 hover:text-white hover:bg-blue-600'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
+                      ? 'text-blue-100 hover:text-white hover:bg-blue-700'
+                      : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}
                   title="Copy message"
                 >
@@ -132,8 +132,8 @@ export function MessageList({ messages, currentUserId, onDeleteMessage, isSessio
                     size="sm"
                     className={`h-7 px-2 ${
                       isOwnMessage
-                        ? 'text-blue-100 hover:text-white hover:bg-blue-600'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
+                        ? 'text-blue-100 hover:text-white hover:bg-blue-700'
+                        : 'text-white/70 hover:text-white hover:bg-white/10'
                     }`}
                     title="Delete message"
                   >

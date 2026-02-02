@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LogOut, Menu, X } from 'lucide-react';
 import { useSocket } from './context/SocketContext';
@@ -29,10 +29,23 @@ export default function App() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [initialJoinAttempted, setInitialJoinAttempted] = useState(false);
   const [view, setView] = useState('files'); // 'files' or 'messages'
+  const [isLeaving, setIsLeaving] = useState(false);
+  const leavingRef = useRef(false); // Use ref to block auto-join during leave
+
+  // Auto-close sidebar on mobile after file upload success
+  const handleUploadSuccess = () => {
+    // Only close on mobile/tablet (< lg breakpoint)
+    if (window.innerWidth < 1024) {
+      setShowSidebar(false);
+    }
+  };
 
   // Handle session from URL (for sharing and PWA share target)
   useEffect(() => {
     const sessionId = searchParams.get('session');
+    if (leavingRef.current) {
+      return;
+    }
     
     if (sessionId && !session && !initialJoinAttempted && isConnected) {
       setInitialJoinAttempted(true);
@@ -49,19 +62,33 @@ export default function App() {
     }
   }, [searchParams, session, initialJoinAttempted, isConnected, isLoading, joinSession, setSearchParams]);
 
-  // Update URL when session changes
+  // Update URL when session changes (but not when leaving)
   useEffect(() => {
-    if (session) {
+    if (leavingRef.current) {
+      return;
+    }
+    
+    if (session && !isLeaving && !searchParams.get('session')) {
       setSearchParams({ session: session.id });
     }
-  }, [session, setSearchParams]);
+  }, [session, setSearchParams, isLeaving]);
 
-  const handleLeave = () => {
-    console.log('[App] handleLeave called, calling leaveSession');
-    leaveSession();
-    setSearchParams({});
+  const handleLeave = async () => {
+    console.log('[App] Leave clicked');
+    leavingRef.current = true;
+    setIsLeaving(true);
     setInitialJoinAttempted(false);
+    
+    // Clear URL and leave session
+    setSearchParams({});
+    await leaveSession();
+    
     if (clearError) clearError();
+    setIsLeaving(false);
+    
+    setTimeout(() => {
+      leavingRef.current = false;
+    }, 100);
   };
 
   // Show loading while trying to join from URL (only if there's a session param)
@@ -100,22 +127,17 @@ export default function App() {
             <Badge variant="info" className="hidden sm:flex">
               {memberCount} {memberCount === 1 ? 'device' : 'devices'}
             </Badge>
-            <a
-              href="/"
+            <button
               onClick={(e) => {
                 e.preventDefault();
                 console.log('[App] Leave clicked');
-                leaveSession();
-                setSearchParams({});
-                setInitialJoinAttempted(false);
-                if (clearError) clearError();
-                window.location.href = '/';
+                handleLeave();
               }}
               className="inline-flex items-center justify-center h-9 px-3 rounded-md text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-accent transition-colors cursor-pointer"
             >
               <LogOut className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Leave</span>
-            </a>
+            </button>
           </div>
         </div>
       </header>
@@ -134,7 +156,7 @@ export default function App() {
             space-y-6
           `}>
             <SessionInfo session={session} memberCount={memberCount} />
-            <FileUpload />
+            <FileUpload onUploadSuccess={handleUploadSuccess} />
           </aside>
 
           {/* Overlay for mobile sidebar */}
@@ -201,7 +223,7 @@ export default function App() {
 
             {/* Messages View */}
             {view === 'messages' && (
-              <div className="flex flex-col h-[calc(100vh-16rem)] border border-gray-200 rounded-lg bg-white">
+              <div className="flex flex-col h-[calc(100vh-16rem)] border border-white/10 rounded-lg bg-white/5 backdrop-blur-sm">
                 <MessageList 
                   messages={messages}
                   currentUserId={isConnected ? session?.id : null}

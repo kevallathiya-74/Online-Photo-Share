@@ -4,16 +4,18 @@ import { useSession } from '../../context/SessionContext';
 import { Button } from '../ui/Button';
 import { Alert, AlertDescription } from '../ui/Alert';
 import { Spinner } from '../ui/Spinner';
+import { CameraCapture } from '../camera';
 import { FILE_CONFIG } from '../../utils/constants';
 import { formatFileSize } from '../../utils/helpers';
 import { cn } from '../../utils/helpers';
 
-export function FileUpload() {
+export function FileUpload({ onUploadSuccess }) {
   const { uploadFile, session } = useSession();
   const [isDragging, setIsDragging] = useState(false);
   const [uploadQueue, setUploadQueue] = useState([]);
   const [errors, setErrors] = useState([]);
   const [cameraSupported, setCameraSupported] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
@@ -96,6 +98,11 @@ export function FileUpload() {
           ));
         });
         
+        // Notify parent of successful upload (triggers sidebar close on mobile)
+        if (onUploadSuccess) {
+          onUploadSuccess();
+        }
+        
         // Remove from queue after success
         setTimeout(() => {
           setUploadQueue(prev => prev.filter(item => item.id !== id));
@@ -114,7 +121,7 @@ export function FileUpload() {
         }, 7000);
       }
     }
-  }, [uploadFile, session]);
+  }, [uploadFile, session, onUploadSuccess]);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -168,67 +175,20 @@ export function FileUpload() {
     }
   }, [processFiles]);
 
-  // Camera capture handler
-  const handleCameraCapture = useCallback(async () => {
-    try {
-      // Modern browsers with getUserMedia
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'environment' }, // Prefer back camera on mobile
-            audio: false 
-          });
-          
-          // Create video element to capture
-          const video = document.createElement('video');
-          video.srcObject = stream;
-          video.play();
+  // Open camera capture
+  const handleOpenCamera = useCallback(() => {
+    setIsCameraOpen(true);
+  }, []);
 
-          // Wait for video to load
-          await new Promise(resolve => {
-            video.onloadedmetadata = resolve;
-          });
-
-          // Create canvas and capture frame
-          const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(video, 0, 0);
-
-          // Stop camera stream
-          stream.getTracks().forEach(track => track.stop());
-
-          // Convert to blob
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
-              processFiles([file]);
-            }
-          }, 'image/jpeg', 0.9);
-          
-        } catch (err) {
-          console.error('Camera error:', err);
-          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-            setErrors(prev => [...prev, 'Camera access denied. Please enable camera permissions in your browser settings.']);
-          } else if (err.name === 'NotFoundError') {
-            setErrors(prev => [...prev, 'No camera found on your device.']);
-          } else {
-            // Fallback to file input with capture attribute
-            cameraInputRef.current?.click();
-          }
-          setTimeout(() => setErrors([]), 7000);
-        }
-      } else {
-        // Fallback for older mobile browsers
-        cameraInputRef.current?.click();
-      }
-    } catch (err) {
-      console.error('Camera capture error:', err);
-      setErrors(prev => [...prev, 'Failed to access camera. Please try using the file picker instead.']);
-      setTimeout(() => setErrors([]), 7000);
-    }
+  // Handle captured photo from camera
+  const handleCameraCapture = useCallback((file) => {
+    processFiles([file]);
   }, [processFiles]);
+
+  // Close camera
+  const handleCloseCamera = useCallback(() => {
+    setIsCameraOpen(false);
+  }, []);
 
   // Listen for paste events
   useState(() => {
@@ -315,7 +275,7 @@ export function FileUpload() {
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleCameraCapture();
+                    handleOpenCamera();
                   }}
                 >
                   <Camera className="h-4 w-4 mr-2" />
@@ -378,6 +338,13 @@ export function FileUpload() {
           ))}
         </div>
       )}
+
+      {/* Camera Capture Component */}
+      <CameraCapture
+        isOpen={isCameraOpen}
+        onCapture={handleCameraCapture}
+        onClose={handleCloseCamera}
+      />
     </div>
   );
 }

@@ -29,9 +29,6 @@ class MessageService {
       throw new Error('Message content cannot be empty');
     }
 
-    if (trimmedContent.length > 10000) {
-      throw new Error('Message is too long (maximum 10,000 characters)');
-    }
 
     // Check message limit
     const messageCount = session.messages?.length || 0;

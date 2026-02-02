@@ -36,9 +36,7 @@ class MessageService {
       throw new ValidationError('Message cannot be empty');
     }
 
-    if (trimmedContent.length > 10000) {
-      throw new ValidationError('Message is too long (maximum 10,000 characters)');
-    }
+  
 
     // Check message limit per session
     if (!session.messages) {
