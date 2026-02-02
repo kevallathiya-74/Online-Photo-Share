@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, LogIn, Wifi, WifiOff, Image as ImageIcon } from 'lucide-react';
+import { Plus, LogIn, Wifi, WifiOff, FileIcon } from 'lucide-react';
 import { useSocket } from '../../context/SocketContext';
 import { useSession } from '../../context/SessionContext';
 import { Button } from '../ui/Button';
@@ -50,11 +50,11 @@ export function SessionCreate({ onSessionCreated }) {
         {/* Logo and Title */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-500/25 mb-4">
-            <ImageIcon className="h-8 w-8 text-white" />
+            <FileIcon className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold gradient-text">ImageShare</h1>
+          <h1 className="text-3xl font-bold gradient-text">FileShare</h1>
           <p className="text-muted-foreground">
-            Share images instantly across devices
+            Share any files instantly across devices
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export function SessionCreate({ onSessionCreated }) {
             {mode === 'create' && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Start a new session and share the link with others to receive images instantly.
+                  Start a new session and share the link with others to exchange files instantly.
                 </p>
                 <Button
                   onClick={handleCreate}
@@ -139,7 +139,7 @@ export function SessionCreate({ onSessionCreated }) {
             {mode === 'join' && (
               <form onSubmit={handleJoin} className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Enter the session ID to join and start sharing images.
+                  Enter the session ID to join and start sharing files.
                 </p>
                 <Input
                   type="text"
@@ -166,22 +166,6 @@ export function SessionCreate({ onSessionCreated }) {
             )}
           </CardContent>
         </Card>
-
-        {/* Features */}
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div className="space-y-1">
-            <div className="text-2xl">🔒</div>
-            <p className="text-xs text-muted-foreground">End-to-end secure</p>
-          </div>
-          <div className="space-y-1">
-            <div className="text-2xl">⚡</div>
-            <p className="text-xs text-muted-foreground">Real-time sync</p>
-          </div>
-          <div className="space-y-1">
-            <div className="text-2xl">🗑️</div>
-            <p className="text-xs text-muted-foreground">Auto-delete</p>
-          </div>
-        </div>
       </div>
     </div>
   );

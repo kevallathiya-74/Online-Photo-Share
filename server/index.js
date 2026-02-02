@@ -19,11 +19,11 @@ import compression from 'compression';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-import { SERVER_CONFIG, IMAGE_CONFIG } from './config/constants.js';
+import { SERVER_CONFIG, FILE_CONFIG } from './config/constants.js';
 import { initializeSocketHandlers } from './socket/socket-handler.js';
 import cleanupService from './services/cleanup-service.js';
 import sessionService from './services/session-service.js';
-import imageService from './services/image-service.js';
+import fileService from './services/file-service.js';
 import { isValidSessionIdFormat } from './utils/security.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -48,7 +48,7 @@ const io = new SocketIOServer(httpServer, {
     methods: ['GET', 'POST'],
     credentials: true
   },
-  maxHttpBufferSize: IMAGE_CONFIG.MAX_SIZE_BYTES + 1024, // Image size + metadata
+  maxHttpBufferSize: FILE_CONFIG.MAX_SIZE_BYTES + 1024 * 1024, // File size + 1MB metadata
   pingTimeout: 60000,
   pingInterval: 25000
 });
@@ -81,7 +81,7 @@ app.use(express.json({ limit: '1mb' }));
 // Parse raw binary data for share target
 app.use('/api/share-target', express.raw({ 
   type: 'multipart/form-data',
-  limit: `${IMAGE_CONFIG.MAX_SIZE_BYTES}b`
+  limit: `${FILE_CONFIG.MAX_SIZE_BYTES}b`
 }));
 
 // Health check endpoint (for Render)
@@ -101,7 +101,7 @@ app.get('/api/health', (req, res) => {
       usagePercent: stats.usagePercent.toFixed(1)
     },
     sessions: stats.sessionCount,
-    images: stats.imageCount
+    files: stats.fileCount
   });
 });
 
@@ -124,7 +124,7 @@ app.get('/api/session/:sessionId', (req, res) => {
 
 /**
  * Share Target Handler
- * Handles images shared from mobile OS share sheet
+ * Handles files shared from mobile OS share sheet
  * POST /api/share-target
  */
 app.post('/api/share-target', async (req, res) => {
@@ -153,20 +153,20 @@ app.post('/api/share-target', async (req, res) => {
         
         req.on('end', () => {
           const buffer = Buffer.concat(chunks);
-          const images = parseMultipartFormData(buffer, boundary);
+          const files = parseMultipartFormData(buffer, boundary);
           
-          // Process each image
+          // Process each file
           const results = [];
-          for (const image of images) {
-            const result = imageService.uploadImage(sessionId, image.buffer, {
-              mimeType: image.mimeType,
-              filename: image.filename
+          for (const file of files) {
+            const result = fileService.uploadFile(sessionId, file.buffer, {
+              mimeType: file.mimeType,
+              filename: file.filename
             }, 'share-target');
             
             if (result.success) {
-              results.push(result.image);
+              results.push(result.file);
               // Notify connected clients
-              io.to(sessionId).emit('image:added', { image: result.image });
+              io.to(sessionId).emit('file:added', { file: result.file });
             }
           }
 
@@ -182,7 +182,7 @@ app.post('/api/share-target', async (req, res) => {
     res.redirect(`/?session=${sessionId}`);
   } catch (error) {
     console.error('[ShareTarget] Error:', error);
-    res.status(500).json({ error: 'Failed to process shared image' });
+    res.status(500).json({ error: 'Failed to process shared file' });
   }
 });
 
@@ -190,7 +190,7 @@ app.post('/api/share-target', async (req, res) => {
  * Parse multipart form data without filesystem access
  */
 function parseMultipartFormData(buffer, boundary) {
-  const images = [];
+  const files = [];
   const boundaryBuffer = Buffer.from(`--${boundary}`);
   
   let start = 0;
@@ -212,24 +212,22 @@ function parseMultipartFormData(buffer, boundary) {
     const headerStr = part.slice(0, headerEnd).toString('utf8');
     const body = part.slice(headerEnd + 4, part.length - 2); // Remove trailing CRLF
     
-    // Parse headers
-    if (headerStr.includes('Content-Type: image/')) {
-      const mimeMatch = headerStr.match(/Content-Type:\s*(image\/[\w+-]+)/i);
-      const filenameMatch = headerStr.match(/filename="([^"]+)"/i);
-      
-      if (mimeMatch && body.length > 0) {
-        images.push({
-          buffer: body,
-          mimeType: mimeMatch[1],
-          filename: filenameMatch ? filenameMatch[1] : 'shared-image'
-        });
-      }
+    // Parse headers - Accept ANY file type
+    const mimeMatch = headerStr.match(/Content-Type:\s*([\w+\-\.\/]+)/i);
+    const filenameMatch = headerStr.match(/filename="([^"]+)"/i);
+    
+    if (body.length > 0) {
+      files.push({
+        buffer: body,
+        mimeType: mimeMatch ? mimeMatch[1] : 'application/octet-stream',
+        filename: filenameMatch ? filenameMatch[1] : 'shared-file'
+      });
     }
     
     partStart = nextBoundary;
   }
   
-  return images;
+  return files;
 }
 
 // Serve static files in production
@@ -252,13 +250,13 @@ cleanupService.initialize(io);
 httpServer.listen(SERVER_CONFIG.PORT, SERVER_CONFIG.HOST, () => {
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
-║                    IMAGE SHARE SERVER                      ║
+║                    FILE SHARE SERVER                       ║
 ╠════════════════════════════════════════════════════════════╣
 ║  Server running at http://${SERVER_CONFIG.HOST}:${SERVER_CONFIG.PORT}                  ║
 ║  WebSocket enabled                                         ║
 ║  Memory-only storage (no persistence)                      ║
-║  Session TTL: 1 hour                                       ║
-║  Max image size: ${IMAGE_CONFIG.MAX_SIZE_BYTES / 1024 / 1024}MB                                       ║
+║  Session TTL: 5 hours                                      ║
+║  Max file size: ${FILE_CONFIG.MAX_SIZE_BYTES / 1024 / 1024}MB                                      ║
 ╚════════════════════════════════════════════════════════════╝
   `);
 });

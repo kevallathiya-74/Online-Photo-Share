@@ -1,10 +1,10 @@
 /**
  * In-Memory Storage Manager
- * Stores all session and image data in RAM only
+ * Stores all session and file data in RAM only
  * No persistence - all data lost on server restart
  */
 
-import { SESSION_CONFIG, IMAGE_CONFIG, MEMORY_CONFIG } from '../config/constants.js';
+import { SESSION_CONFIG, FILE_CONFIG, MEMORY_CONFIG } from '../config/constants.js';
 
 /**
  * Session structure:
@@ -12,11 +12,11 @@ import { SESSION_CONFIG, IMAGE_CONFIG, MEMORY_CONFIG } from '../config/constants
  *   id: string,
  *   createdAt: number (timestamp),
  *   expiresAt: number (timestamp),
- *   images: Map<imageId, ImageData>,
+ *   files: Map<fileId, FileData>,
  *   members: Set<socketId>
  * }
  * 
- * ImageData structure:
+ * FileData structure:
  * {
  *   id: string,
  *   buffer: Buffer (binary data),
@@ -49,17 +49,17 @@ class MemoryStore {
       maxBytes: MEMORY_CONFIG.MAX_TOTAL_BYTES,
       usagePercent: (this.totalMemoryUsage / MEMORY_CONFIG.MAX_TOTAL_BYTES) * 100,
       sessionCount: this.sessions.size,
-      imageCount: this.getTotalImageCount()
+      fileCount: this.getTotalFileCount()
     };
   }
 
   /**
-   * Get total image count across all sessions
+   * Get total file count across all sessions
    */
-  getTotalImageCount() {
+  getTotalFileCount() {
     let count = 0;
     for (const session of this.sessions.values()) {
-      count += session.images.size;
+      count += session.files.size;
     }
     return count;
   }
@@ -87,7 +87,7 @@ class MemoryStore {
       id: sessionId,
       createdAt: now,
       expiresAt: now + SESSION_CONFIG.TTL_MS,
-      images: new Map(),
+      files: new Map(),
       members: new Set()
     };
     
@@ -125,13 +125,13 @@ class MemoryStore {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
 
-    // Free memory from all images
-    for (const image of session.images.values()) {
-      this.totalMemoryUsage -= image.size;
+    // Free memory from all files
+    for (const file of session.files.values()) {
+      this.totalMemoryUsage -= file.size;
     }
 
-    // Clear image map
-    session.images.clear();
+    // Clear file map
+    session.files.clear();
     
     // Remove socket mappings for this session
     for (const socketId of session.members) {
@@ -180,116 +180,111 @@ class MemoryStore {
   }
 
   /**
-   * Add an image to a session
+   * Add a file to a session
    */
-  addImage(sessionId, imageId, imageData) {
+  addFile(sessionId, fileId, fileData) {
     const session = this.getSession(sessionId);
     if (!session) {
       return { success: false, error: 'Session not found or expired' };
     }
 
-    // Check session image limit
-    if (session.images.size >= SESSION_CONFIG.MAX_IMAGES_PER_SESSION) {
-      return { success: false, error: 'Maximum images per session reached' };
+    // Check session file limit
+    if (session.files.size >= SESSION_CONFIG.MAX_FILES_PER_SESSION) {
+      return { success: false, error: 'Maximum files per session reached' };
     }
 
-    // Check image size
-    if (imageData.buffer.length > IMAGE_CONFIG.MAX_SIZE_BYTES) {
-      return { success: false, error: 'Image exceeds maximum size limit' };
-    }
-
-    // Check MIME type
-    if (!IMAGE_CONFIG.ALLOWED_TYPES.includes(imageData.mimeType)) {
-      return { success: false, error: 'Invalid image type' };
+    // Check file size
+    if (fileData.buffer.length > FILE_CONFIG.MAX_SIZE_BYTES) {
+      return { success: false, error: 'File exceeds maximum size limit' };
     }
 
     // Check memory availability
-    if (!this.hasAvailableMemory(imageData.buffer.length)) {
+    if (!this.hasAvailableMemory(fileData.buffer.length)) {
       return { success: false, error: 'Server memory limit reached' };
     }
 
-    const image = {
-      id: imageId,
-      buffer: imageData.buffer,
-      mimeType: imageData.mimeType,
-      filename: imageData.filename || `image-${imageId}`,
-      size: imageData.buffer.length,
+    const file = {
+      id: fileId,
+      buffer: fileData.buffer,
+      mimeType: fileData.mimeType,
+      filename: fileData.filename || `file-${fileId}`,
+      size: fileData.buffer.length,
       uploadedAt: Date.now(),
-      uploadedBy: imageData.uploadedBy
+      uploadedBy: fileData.uploadedBy
     };
 
-    session.images.set(imageId, image);
-    this.totalMemoryUsage += image.size;
+    session.files.set(fileId, file);
+    this.totalMemoryUsage += file.size;
 
     return { 
       success: true, 
-      image: {
-        id: image.id,
-        mimeType: image.mimeType,
-        filename: image.filename,
-        size: image.size,
-        uploadedAt: image.uploadedAt
+      file: {
+        id: file.id,
+        mimeType: file.mimeType,
+        filename: file.filename,
+        size: file.size,
+        uploadedAt: file.uploadedAt
       }
     };
   }
 
   /**
-   * Get image metadata (without buffer)
+   * Get file metadata (without buffer)
    */
-  getImageMetadata(sessionId, imageId) {
+  getFileMetadata(sessionId, fileId) {
     const session = this.getSession(sessionId);
     if (!session) return null;
 
-    const image = session.images.get(imageId);
-    if (!image) return null;
+    const file = session.files.get(fileId);
+    if (!file) return null;
 
     return {
-      id: image.id,
-      mimeType: image.mimeType,
-      filename: image.filename,
-      size: image.size,
-      uploadedAt: image.uploadedAt
+      id: file.id,
+      mimeType: file.mimeType,
+      filename: file.filename,
+      size: file.size,
+      uploadedAt: file.uploadedAt
     };
   }
 
   /**
-   * Get image with buffer (for download)
+   * Get file with buffer (for download)
    */
-  getImageWithBuffer(sessionId, imageId) {
+  getFileWithBuffer(sessionId, fileId) {
     const session = this.getSession(sessionId);
     if (!session) return null;
 
-    return session.images.get(imageId) || null;
+    return session.files.get(fileId) || null;
   }
 
   /**
-   * Get all image metadata for a session
+   * Get all file metadata for a session
    */
-  getSessionImages(sessionId) {
+  getSessionFiles(sessionId) {
     const session = this.getSession(sessionId);
     if (!session) return [];
 
-    return Array.from(session.images.values()).map(image => ({
-      id: image.id,
-      mimeType: image.mimeType,
-      filename: image.filename,
-      size: image.size,
-      uploadedAt: image.uploadedAt
+    return Array.from(session.files.values()).map(file => ({
+      id: file.id,
+      mimeType: file.mimeType,
+      filename: file.filename,
+      size: file.size,
+      uploadedAt: file.uploadedAt
     }));
   }
 
   /**
-   * Delete an image from a session
+   * Delete a file from a session
    */
-  deleteImage(sessionId, imageId) {
+  deleteFile(sessionId, fileId) {
     const session = this.getSession(sessionId);
     if (!session) return false;
 
-    const image = session.images.get(imageId);
-    if (!image) return false;
+    const file = session.files.get(fileId);
+    if (!file) return false;
 
-    this.totalMemoryUsage -= image.size;
-    session.images.delete(imageId);
+    this.totalMemoryUsage -= file.size;
+    session.files.delete(fileId);
     
     return true;
   }
@@ -321,9 +316,9 @@ class MemoryStore {
       id: session.id,
       createdAt: session.createdAt,
       expiresAt: session.expiresAt,
-      imageCount: session.images.size,
+      fileCount: session.files.size,
       memberCount: session.members.size,
-      images: this.getSessionImages(sessionId)
+      files: this.getSessionFiles(sessionId)
     };
   }
 }

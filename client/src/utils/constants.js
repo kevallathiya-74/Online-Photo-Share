@@ -6,9 +6,9 @@ export const SOCKET_EVENTS = {
   CREATE_SESSION: 'session:create',
   JOIN_SESSION: 'session:join',
   LEAVE_SESSION: 'session:leave',
-  UPLOAD_IMAGE: 'image:upload',
-  DELETE_IMAGE: 'image:delete',
-  REQUEST_IMAGE: 'image:request',
+  UPLOAD_FILE: 'file:upload',
+  DELETE_FILE: 'file:delete',
+  REQUEST_FILE: 'file:request',
   
   // Server -> Client
   SESSION_CREATED: 'session:created',
@@ -16,36 +16,30 @@ export const SOCKET_EVENTS = {
   SESSION_LEFT: 'session:left',
   SESSION_ERROR: 'session:error',
   SESSION_EXPIRED: 'session:expired',
-  IMAGE_ADDED: 'image:added',
-  IMAGE_DELETED: 'image:deleted',
-  IMAGE_DATA: 'image:data',
-  IMAGE_ERROR: 'image:error',
+  FILE_ADDED: 'file:added',
+  FILE_DELETED: 'file:deleted',
+  FILE_DATA: 'file:data',
+  FILE_ERROR: 'file:error',
   MEMBER_JOINED: 'member:joined',
   MEMBER_LEFT: 'member:left',
   SESSION_INFO: 'session:info'
 };
 
 /**
- * Image configuration
+ * File configuration - supports ALL file types
  */
-export const IMAGE_CONFIG = {
-  MAX_SIZE_BYTES: 5 * 1024 * 1024, // 5MB
-  ALLOWED_TYPES: [
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-    'image/svg+xml',
-    'image/bmp',
-    'image/heic',
-    'image/heif'
-  ]
+export const FILE_CONFIG = {
+  MAX_SIZE_BYTES: 100 * 1024 * 1024, // 100MB
+  ALLOWED_TYPES: ['*'] // Accept all file types
 };
+
+// Legacy support
+export const IMAGE_CONFIG = FILE_CONFIG;
 
 /**
  * Session configuration
  */
 export const SESSION_CONFIG = {
-  TTL_MS: 60 * 60 * 1000, // 1 hour
-  MAX_IMAGES: 50
+  TTL_MS: 5 * 60 * 60 * 1000, // 5 hours
+  MAX_FILES: 100
 };

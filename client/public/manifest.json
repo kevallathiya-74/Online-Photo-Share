@@ -1,7 +1,7 @@
 {
-  "name": "ImageShare - Real-time Image Sharing",
-  "short_name": "ImageShare",
-  "description": "Share images instantly across devices without signup",
+  "name": "FileShare - Real-time File Sharing",
+  "short_name": "FileShare",
+  "description": "Share files instantly across devices without signup - images, videos, PDFs, documents, and more",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -29,18 +29,35 @@
     "params": {
       "files": [
         {
-          "name": "images",
-          "accept": ["image/jpeg", "image/png", "image/gif", "image/webp", "image/*"]
+          "name": "files",
+          "accept": [
+            "image/*",
+            "video/*",
+            "audio/*",
+            "application/pdf",
+            "application/zip",
+            "application/x-zip-compressed",
+            "application/x-rar-compressed",
+            "application/x-7z-compressed",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "text/*",
+            "*/*"
+          ]
         }
       ]
     }
   },
-  "categories": ["photo", "utilities", "productivity"],
+  "categories": ["utilities", "productivity", "social"],
   "shortcuts": [
     {
       "name": "Create New Session",
       "short_name": "Create",
-      "description": "Start a new image sharing session",
+      "description": "Start a new file sharing session",
       "url": "/?action=create",
       "icons": [{ "src": "/icons/favicon.svg", "sizes": "any" }]
     }

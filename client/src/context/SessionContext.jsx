@@ -16,7 +16,7 @@ export function SessionProvider({ children }) {
   const { emit, on, isConnected } = useSocket();
   
   const [session, setSession] = useState(null);
-  const [images, setImages] = useState([]);
+  const [files, setFiles] = useState([]);
   const [memberCount, setMemberCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -37,7 +37,7 @@ export function SessionProvider({ children }) {
           createdAt: result.createdAt,
           expiresAt: result.expiresAt
         });
-        setImages([]);
+        setFiles([]);
         setMemberCount(1);
         console.log('[Session] Session state updated:', result.sessionId);
       }
@@ -63,7 +63,7 @@ export function SessionProvider({ children }) {
         createdAt: result.createdAt,
         expiresAt: result.expiresAt
       });
-      setImages(result.images || []);
+      setFiles(result.files || []);
       setMemberCount(result.memberCount || 1);
       return result;
     } catch (err) {
@@ -86,12 +86,12 @@ export function SessionProvider({ children }) {
     }
     // Always clear state
     setSession(null);
-    setImages([]);
+    setFiles([]);
     setMemberCount(0);
   }, [emit]);
 
-  // Upload an image
-  const uploadImage = useCallback(async (file) => {
+  // Upload a file
+  const uploadFile = useCallback(async (file) => {
     if (!session) {
       throw new Error('Not in a session');
     }
@@ -102,7 +102,7 @@ export function SessionProvider({ children }) {
       // Read file as ArrayBuffer
       const buffer = await file.arrayBuffer();
       
-      const result = await emit(SOCKET_EVENTS.UPLOAD_IMAGE, {
+      const result = await emit(SOCKET_EVENTS.UPLOAD_FILE, {
         buffer: buffer,
         mimeType: file.type,
         filename: file.name
@@ -115,29 +115,29 @@ export function SessionProvider({ children }) {
     }
   }, [emit, session]);
 
-  // Request image data for download
-  const requestImage = useCallback(async (imageId) => {
+  // Request file data for download
+  const requestFile = useCallback(async (fileId) => {
     if (!session) {
       throw new Error('Not in a session');
     }
     
     try {
-      const result = await emit(SOCKET_EVENTS.REQUEST_IMAGE, { imageId });
+      const result = await emit(SOCKET_EVENTS.REQUEST_FILE, { fileId });
       return result;
     } catch (err) {
-      console.error('Error requesting image:', err);
+      console.error('Error requesting file:', err);
       throw err;
     }
   }, [emit, session]);
 
-  // Delete an image
-  const deleteImage = useCallback(async (imageId) => {
+  // Delete a file
+  const deleteFile = useCallback(async (fileId) => {
     if (!session) {
       throw new Error('Not in a session');
     }
     
     try {
-      await emit(SOCKET_EVENTS.DELETE_IMAGE, { imageId });
+      await emit(SOCKET_EVENTS.DELETE_FILE, { fileId });
     } catch (err) {
       setError(err.message);
       throw err;
@@ -150,14 +150,14 @@ export function SessionProvider({ children }) {
 
     const cleanups = [];
 
-    // Image added
-    cleanups.push(on(SOCKET_EVENTS.IMAGE_ADDED, (data) => {
-      setImages(prev => [...prev, data.image]);
+    // File added
+    cleanups.push(on(SOCKET_EVENTS.FILE_ADDED, (data) => {
+      setFiles(prev => [...prev, data.file]);
     }));
 
-    // Image deleted
-    cleanups.push(on(SOCKET_EVENTS.IMAGE_DELETED, (data) => {
-      setImages(prev => prev.filter(img => img.id !== data.imageId));
+    // File deleted
+    cleanups.push(on(SOCKET_EVENTS.FILE_DELETED, (data) => {
+      setFiles(prev => prev.filter(f => f.id !== data.fileId));
     }));
 
     // Member joined
@@ -173,7 +173,7 @@ export function SessionProvider({ children }) {
     // Session expired
     cleanups.push(on(SOCKET_EVENTS.SESSION_EXPIRED, () => {
       setSession(null);
-      setImages([]);
+      setFiles([]);
       setMemberCount(0);
       setError('Session has expired');
     }));
@@ -190,16 +190,16 @@ export function SessionProvider({ children }) {
 
   const value = {
     session,
-    images,
+    files,
     memberCount,
     isLoading,
     error,
     createSession,
     joinSession,
     leaveSession,
-    uploadImage,
-    requestImage,
-    deleteImage,
+    uploadFile,
+    requestFile,
+    deleteFile,
     clearError: () => setError(null)
   };
 

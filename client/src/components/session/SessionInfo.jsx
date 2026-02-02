@@ -50,8 +50,8 @@ export function SessionInfo({ session, memberCount }) {
     if (isWebShareSupported()) {
       try {
         await navigator.share({
-          title: 'Join my ImageShare session',
-          text: 'Share images instantly!',
+          title: 'Join my FileShare session',
+          text: 'Share files instantly - any type, any device!',
           url: shareUrl
         });
       } catch (err) {

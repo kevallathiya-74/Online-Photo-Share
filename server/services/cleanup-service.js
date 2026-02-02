@@ -72,7 +72,7 @@ class CleanupService {
     const duration = Date.now() - startTime;
     const stats = memoryStore.getMemoryStats();
     
-    console.log(`[Cleanup] Completed in ${duration}ms. Memory: ${(stats.totalBytes / 1024 / 1024).toFixed(2)}MB (${stats.usagePercent.toFixed(1)}%), Sessions: ${stats.sessionCount}, Images: ${stats.imageCount}`);
+    console.log(`[Cleanup] Completed in ${duration}ms. Memory: ${(stats.totalBytes / 1024 / 1024).toFixed(2)}MB (${stats.usagePercent.toFixed(1)}%), Sessions: ${stats.sessionCount}, Files: ${stats.fileCount}`);
   }
 
   /**

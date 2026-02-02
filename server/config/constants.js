@@ -9,37 +9,31 @@ export const SERVER_CONFIG = {
 };
 
 export const SESSION_CONFIG = {
-  // Session TTL: 1 hour in milliseconds
-  TTL_MS: 60 * 60 * 1000,
+  // Session TTL: 5 hours in milliseconds
+  TTL_MS: 5 * 60 * 60 * 1000,
   // Session ID length in bytes (5 alphanumeric characters)
   ID_LENGTH: 5,
-  // Maximum images per session
-  MAX_IMAGES_PER_SESSION: 50,
+  // Maximum files per session
+  MAX_FILES_PER_SESSION: 100,
   // Cleanup interval: run every 5 minutes
   CLEANUP_INTERVAL_MS: 5 * 60 * 1000
 };
 
-export const IMAGE_CONFIG = {
-  // Maximum image size: 5MB
-  MAX_SIZE_BYTES: 5 * 1024 * 1024,
-  // Allowed MIME types
-  ALLOWED_TYPES: [
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-    'image/svg+xml',
-    'image/bmp',
-    'image/heic',
-    'image/heif'
-  ],
-  // Image ID length in bytes
+export const FILE_CONFIG = {
+  // Maximum file size: 100MB
+  MAX_SIZE_BYTES: 100 * 1024 * 1024,
+  // Accept ALL file types - no restrictions
+  ALLOWED_TYPES: ['*'],
+  // File ID length in bytes
   ID_LENGTH: 16
 };
 
+// Deprecated: keeping for backwards compatibility
+export const IMAGE_CONFIG = FILE_CONFIG;
+
 export const MEMORY_CONFIG = {
-  // Maximum total memory usage (500MB)
-  MAX_TOTAL_BYTES: 500 * 1024 * 1024,
+  // Maximum total memory usage (2GB for 100MB files)
+  MAX_TOTAL_BYTES: 2 * 1024 * 1024 * 1024,
   // Warning threshold (80%)
   WARNING_THRESHOLD: 0.8,
   // Critical threshold (95%)
@@ -51,9 +45,9 @@ export const SOCKET_EVENTS = {
   CREATE_SESSION: 'session:create',
   JOIN_SESSION: 'session:join',
   LEAVE_SESSION: 'session:leave',
-  UPLOAD_IMAGE: 'image:upload',
-  DELETE_IMAGE: 'image:delete',
-  REQUEST_IMAGE: 'image:request',
+  UPLOAD_FILE: 'file:upload',
+  DELETE_FILE: 'file:delete',
+  REQUEST_FILE: 'file:request',
   
   // Server -> Client
   SESSION_CREATED: 'session:created',
@@ -61,10 +55,10 @@ export const SOCKET_EVENTS = {
   SESSION_LEFT: 'session:left',
   SESSION_ERROR: 'session:error',
   SESSION_EXPIRED: 'session:expired',
-  IMAGE_ADDED: 'image:added',
-  IMAGE_DELETED: 'image:deleted',
-  IMAGE_DATA: 'image:data',
-  IMAGE_ERROR: 'image:error',
+  FILE_ADDED: 'file:added',
+  FILE_DELETED: 'file:deleted',
+  FILE_DATA: 'file:data',
+  FILE_ERROR: 'file:error',
   MEMBER_JOINED: 'member:joined',
   MEMBER_LEFT: 'member:left',
   SESSION_INFO: 'session:info'

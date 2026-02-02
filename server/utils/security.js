@@ -1,10 +1,10 @@
 /**
  * Security Utilities
- * Cryptographic functions for secure session and image IDs
+ * Cryptographic functions for secure session and file IDs
  */
 
 import crypto from 'crypto';
-import { SESSION_CONFIG, IMAGE_CONFIG } from '../config/constants.js';
+import { SESSION_CONFIG, FILE_CONFIG } from '../config/constants.js';
 
 /**
  * Generate a cryptographically secure session ID
@@ -21,11 +21,14 @@ export function generateSessionId() {
 }
 
 /**
- * Generate a secure image ID
+ * Generate a secure file ID
  */
-export function generateImageId() {
-  return crypto.randomBytes(IMAGE_CONFIG.ID_LENGTH).toString('hex');
+export function generateFileId() {
+  return crypto.randomBytes(FILE_CONFIG.ID_LENGTH).toString('hex');
 }
+
+// Alias for backwards compatibility
+export const generateImageId = generateFileId;
 
 /**
  * Validate session ID format
@@ -39,15 +42,18 @@ export function isValidSessionIdFormat(sessionId) {
 }
 
 /**
- * Validate image ID format
+ * Validate file ID format
  */
-export function isValidImageIdFormat(imageId) {
-  if (!imageId || typeof imageId !== 'string') return false;
+export function isValidFileIdFormat(fileId) {
+  if (!fileId || typeof fileId !== 'string') return false;
   
-  // Image ID should be 32 hex characters (16 bytes)
+  // File ID should be 32 hex characters (16 bytes)
   const hexRegex = /^[a-f0-9]{32}$/i;
-  return hexRegex.test(imageId);
+  return hexRegex.test(fileId);
 }
+
+// Alias for backwards compatibility
+export const isValidImageIdFormat = isValidFileIdFormat;
 
 /**
  * Sanitize filename to prevent path traversal
@@ -66,15 +72,20 @@ export function sanitizeFilename(filename) {
 }
 
 /**
- * Validate MIME type is an image
+ * Validate MIME type format (accepts any valid MIME type)
  */
-export function isValidImageMimeType(mimeType) {
+export function isValidMimeType(mimeType) {
   if (!mimeType || typeof mimeType !== 'string') return false;
-  return mimeType.startsWith('image/');
+  // Basic MIME type validation: type/subtype
+  return /^[a-z]+\/[a-z0-9\-\+\.]+$/i.test(mimeType);
 }
 
+// Legacy alias - now accepts any MIME type
+export const isValidImageMimeType = isValidMimeType;
+
 /**
- * Extract MIME type from buffer magic bytes
+ * Extract MIME type from buffer magic bytes (images only)
+ * For other file types, rely on metadata from client
  */
 export function detectMimeType(buffer) {
   if (!buffer || buffer.length < 4) return null;

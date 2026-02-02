@@ -1,12 +1,12 @@
 /**
  * Socket.IO Event Handlers
- * Manages all WebSocket communication for real-time image sharing
+ * Manages all WebSocket communication for real-time file sharing
  */
 
 import { SOCKET_EVENTS } from '../config/constants.js';
 import sessionService from '../services/session-service.js';
-import imageService from '../services/image-service.js';
-import { isValidSessionIdFormat, isValidImageIdFormat } from '../utils/security.js';
+import fileService from '../services/file-service.js';
+import { isValidSessionIdFormat, isValidFileIdFormat } from '../utils/security.js';
 
 /**
  * Initialize Socket.IO handlers
@@ -103,8 +103,8 @@ export function initializeSocketHandlers(io) {
       handleLeaveSession(socket, callback);
     });
 
-    // Upload Image (Binary data transfer)
-    socket.on(SOCKET_EVENTS.UPLOAD_IMAGE, (data, callback) => {
+    // Upload File (Binary data transfer)
+    socket.on(SOCKET_EVENTS.UPLOAD_FILE, (data, callback) => {
       try {
         const sessionId = sessionService.getSocketSession(socket.id);
         
@@ -118,45 +118,45 @@ export function initializeSocketHandlers(io) {
         const { buffer, mimeType, filename } = data || {};
         
         if (!buffer) {
-          const error = { success: false, error: 'No image data provided' };
+          const error = { success: false, error: 'No file data provided' };
           if (typeof callback === 'function') callback(error);
           return;
         }
 
         // Convert ArrayBuffer to Buffer if needed
-        const imageBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+        const fileBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
 
-        const result = imageService.uploadImage(sessionId, imageBuffer, {
+        const result = fileService.uploadFile(sessionId, fileBuffer, {
           mimeType,
           filename
         }, socket.id);
 
         if (!result.success) {
           if (typeof callback === 'function') callback(result);
-          socket.emit(SOCKET_EVENTS.IMAGE_ERROR, result);
+          socket.emit(SOCKET_EVENTS.FILE_ERROR, result);
           return;
         }
 
-        console.log(`[Socket] Image uploaded: ${result.image.id.substring(0, 8)}... to session ${sessionId.substring(0, 8)}...`);
+        console.log(`[Socket] File uploaded: ${result.file.id.substring(0, 8)}... to session ${sessionId.substring(0, 8)}...`);
         
         if (typeof callback === 'function') {
-          callback({ success: true, image: result.image });
+          callback({ success: true, file: result.file });
         }
 
         // Broadcast to all clients in the session (including sender)
-        io.to(sessionId).emit(SOCKET_EVENTS.IMAGE_ADDED, {
-          image: result.image
+        io.to(sessionId).emit(SOCKET_EVENTS.FILE_ADDED, {
+          file: result.file
         });
       } catch (error) {
-        console.error('[Socket] Error uploading image:', error);
+        console.error('[Socket] Error uploading file:', error);
         if (typeof callback === 'function') {
-          callback({ success: false, error: 'Failed to upload image' });
+          callback({ success: false, error: 'Failed to upload file' });
         }
       }
     });
 
-    // Request Image Data (for download/preview)
-    socket.on(SOCKET_EVENTS.REQUEST_IMAGE, (data, callback) => {
+    // Request File Data (for download/preview)
+    socket.on(SOCKET_EVENTS.REQUEST_FILE, (data, callback) => {
       try {
         const sessionId = sessionService.getSocketSession(socket.id);
         
@@ -166,54 +166,54 @@ export function initializeSocketHandlers(io) {
           return;
         }
 
-        const { imageId } = data || {};
+        const { fileId } = data || {};
         
-        if (!isValidImageIdFormat(imageId)) {
-          const error = { success: false, error: 'Invalid image ID' };
+        if (!isValidFileIdFormat(fileId)) {
+          const error = { success: false, error: 'Invalid file ID' };
           if (typeof callback === 'function') callback(error);
           return;
         }
 
-        const image = imageService.getImage(sessionId, imageId);
+        const file = fileService.getFile(sessionId, fileId);
         
-        if (!image) {
-          const error = { success: false, error: 'Image not found' };
+        if (!file) {
+          const error = { success: false, error: 'File not found' };
           if (typeof callback === 'function') callback(error);
           return;
         }
 
-        // Send image data back
+        // Send file data back
         if (typeof callback === 'function') {
           callback({
             success: true,
-            image: {
-              id: image.id,
-              buffer: image.buffer,
-              mimeType: image.mimeType,
-              filename: image.filename,
-              size: image.size
+            file: {
+              id: file.id,
+              buffer: file.buffer,
+              mimeType: file.mimeType,
+              filename: file.filename,
+              size: file.size
             }
           });
         }
 
         // Also emit as event for clients that don't use callback
-        socket.emit(SOCKET_EVENTS.IMAGE_DATA, {
-          id: image.id,
-          buffer: image.buffer,
-          mimeType: image.mimeType,
-          filename: image.filename,
-          size: image.size
+        socket.emit(SOCKET_EVENTS.FILE_DATA, {
+          id: file.id,
+          buffer: file.buffer,
+          mimeType: file.mimeType,
+          filename: file.filename,
+          size: file.size
         });
       } catch (error) {
-        console.error('[Socket] Error requesting image:', error);
+        console.error('[Socket] Error requesting file:', error);
         if (typeof callback === 'function') {
-          callback({ success: false, error: 'Failed to retrieve image' });
+          callback({ success: false, error: 'Failed to retrieve file' });
         }
       }
     });
 
-    // Delete Image
-    socket.on(SOCKET_EVENTS.DELETE_IMAGE, (data, callback) => {
+    // Delete File
+    socket.on(SOCKET_EVENTS.DELETE_FILE, (data, callback) => {
       try {
         const sessionId = sessionService.getSocketSession(socket.id);
         
@@ -223,34 +223,34 @@ export function initializeSocketHandlers(io) {
           return;
         }
 
-        const { imageId } = data || {};
+        const { fileId } = data || {};
         
-        if (!isValidImageIdFormat(imageId)) {
-          const error = { success: false, error: 'Invalid image ID' };
+        if (!isValidFileIdFormat(fileId)) {
+          const error = { success: false, error: 'Invalid file ID' };
           if (typeof callback === 'function') callback(error);
           return;
         }
 
-        const deleted = imageService.deleteImage(sessionId, imageId);
+        const deleted = fileService.deleteFile(sessionId, fileId);
         
         if (!deleted) {
-          const error = { success: false, error: 'Image not found' };
+          const error = { success: false, error: 'File not found' };
           if (typeof callback === 'function') callback(error);
           return;
         }
 
-        console.log(`[Socket] Image deleted: ${imageId.substring(0, 8)}...`);
+        console.log(`[Socket] File deleted: ${fileId.substring(0, 8)}...`);
         
         if (typeof callback === 'function') {
           callback({ success: true });
         }
 
         // Notify all clients in the session
-        io.to(sessionId).emit(SOCKET_EVENTS.IMAGE_DELETED, { imageId });
+        io.to(sessionId).emit(SOCKET_EVENTS.FILE_DELETED, { fileId });
       } catch (error) {
-        console.error('[Socket] Error deleting image:', error);
+        console.error('[Socket] Error deleting file:', error);
         if (typeof callback === 'function') {
-          callback({ success: false, error: 'Failed to delete image' });
+          callback({ success: false, error: 'Failed to delete file' });
         }
       }
     });

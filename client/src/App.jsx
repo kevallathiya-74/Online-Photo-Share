@@ -4,7 +4,7 @@ import { LogOut, Menu, X } from 'lucide-react';
 import { useSocket } from './context/SocketContext';
 import { useSession } from './context/SessionContext';
 import { SessionCreate, SessionInfo } from './components/session';
-import { ImageUpload, ImageGrid } from './components/image';
+import { FileUpload, FileGrid } from './components/file';
 import { Button } from './components/ui/Button';
 import { Badge } from './components/ui/Badge';
 import { Alert, AlertDescription } from './components/ui/Alert';
@@ -80,7 +80,7 @@ export default function App() {
             >
               {showSidebar ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
-            <h1 className="text-xl font-bold gradient-text">ImageShare</h1>
+            <h1 className="text-xl font-bold gradient-text">FileShare</h1>
           </div>
           
           <div className="flex items-center gap-3">
@@ -121,7 +121,7 @@ export default function App() {
             space-y-6
           `}>
             <SessionInfo session={session} memberCount={memberCount} />
-            <ImageUpload />
+            <FileUpload />
           </aside>
 
           {/* Overlay for mobile sidebar */}
@@ -147,13 +147,13 @@ export default function App() {
             )}
 
             <div className="mb-4">
-              <h2 className="text-lg font-semibold">Shared Images</h2>
+              <h2 className="text-lg font-semibold">Shared Files</h2>
               <p className="text-sm text-muted-foreground">
-                Images appear here instantly when shared by any device
+                Files appear here instantly when shared by any device
               </p>
             </div>
 
-            <ImageGrid />
+            <FileGrid />
           </main>
         </div>
       </div>
