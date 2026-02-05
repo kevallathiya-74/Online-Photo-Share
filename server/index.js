@@ -112,6 +112,12 @@ app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
+// Lightweight cron ping endpoint (for cron-job.org)
+app.get('/api/cron/ping', (req, res) => {
+  console.log('Cron keep-alive triggered');
+  res.status(200).send('OK');
+});
+
 // Health check endpoint with stats
 app.get('/api/health', (req, res) => {
   const stats = cleanupService.getStats();
