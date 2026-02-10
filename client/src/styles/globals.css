@@ -25,81 +25,110 @@
     --ring: 224.3 76.3% 48%;
     --radius: 0.75rem;
   }
+
+  .light {
+    --background: 0 0% 98%;
+    --foreground: 222.2 47.4% 11.2%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214.3 31.8% 91.4%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 214.3 31.8% 91.4%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 214.3 31.8% 91.4%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214.3 31.8% 85%;
+    --input: 214.3 31.8% 85%;
+    --ring: 217.2 91.2% 59.8%;
+  }
 }
 
 @layer base {
   * {
     @apply border-border;
   }
-  
+
   body {
     @apply bg-background text-foreground;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  
+
   /* Prevent pull-to-refresh on mobile */
-  html, body {
+  html,
+  body {
     overscroll-behavior-y: contain;
   }
-  
+
   /* Hide scrollbar but keep functionality */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
 }
 
 @layer components {
+
   /* Glass effect for cards */
   .glass {
     @apply bg-white/5 backdrop-blur-xl border border-white/10;
   }
-  
+
+  .light .glass {
+    @apply bg-black/5 backdrop-blur-xl border border-black/10;
+  }
+
   /* Gradient text */
   .gradient-text {
-    @apply bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent;
   }
-  
+
   /* Image grid item animation */
   .image-grid-item {
     @apply transition-all duration-300 ease-out;
   }
-  
+
   .image-grid-item:hover {
     @apply scale-[1.02] shadow-xl;
   }
-  
+
   /* Pulse animation for live indicator */
   .pulse-live {
     animation: pulse-live 2s ease-in-out infinite;
   }
-  
+
   @keyframes pulse-live {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 1;
     }
+
     50% {
       opacity: 0.5;
     }
   }
-  
+
   /* Upload zone */
   .upload-zone {
-    @apply border-2 border-dashed border-white/20 rounded-xl p-8 
-           transition-all duration-200 ease-out cursor-pointer
-           hover:border-primary/50 hover:bg-white/5;
+    @apply border-2 border-dashed border-border rounded-xl p-8 transition-all duration-200 ease-out cursor-pointer hover:border-primary/50 hover:bg-accent;
   }
-  
+
   .upload-zone.dragging {
     @apply border-primary bg-primary/10 scale-[1.02];
   }
-  
+
   /* QR Code container */
   .qr-container {
     @apply bg-white p-4 rounded-xl;
@@ -107,20 +136,281 @@
 }
 
 @layer utilities {
+
   /* Safe area insets for mobile */
   .safe-top {
     padding-top: env(safe-area-inset-top);
   }
-  
+
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
-  
+
   .safe-left {
     padding-left: env(safe-area-inset-left);
   }
-  
+
   .safe-right {
     padding-right: env(safe-area-inset-right);
+  }
+
+  /* Performance optimizations */
+  .will-change-transform {
+    will-change: transform;
+  }
+
+  .will-change-opacity {
+    will-change: opacity;
+  }
+
+  /* Smooth scrolling */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+  }
+
+  /* Loading skeleton */
+  .skeleton {
+    @apply animate-pulse bg-white/10 rounded;
+  }
+
+  /* Fade in animation */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  /* Scale in animation */
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  /* Optimized transitions */
+  .transition-fast {
+    transition: all 0.15s ease-out;
+  }
+
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Performance: Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Optimize font rendering */
+@layer base {
+  html {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Light mode specific improvements */
+.light {
+
+  /* Better card visibility */
+  .glass {
+    background: rgba(0, 0, 0, 0.03) !important;
+    border-color: rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Upload area visibility - MUCH MORE VISIBLE */
+  [class*="border-dashed"] {
+    border-color: rgba(0, 0, 0, 0.42) !important;
+    border-width: 2px !important;
+  }
+
+  /* Better text contrast for muted text */
+  [class*="text-muted"] {
+    color: hsl(215.4 16.3% 35%) !important;
+  }
+
+  /* Session card improvements */
+  [class*="bg-card"] {
+    background: white !important;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Button improvements */
+  button[class*="bg-primary"] {
+    box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
+  }
+
+  /* Input field visibility - STRONGER BORDERS */
+  input,
+  textarea {
+    background: white !important;
+    border: 1px solid rgba(0, 0, 0, 0.25) !important;
+    color: hsl(222.2 47.4% 11.2%) !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(215.4 16.3% 50%) !important;
+  }
+
+  input:focus,
+  textarea:focus {
+    border-color: hsl(217.2 91.2% 59.8%) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+
+  /* Better hover states */
+  [class*="hover:bg-accent"]:hover {
+    background: rgba(0, 0, 0, 0.08) !important;
+  }
+
+  /* Icon visibility - DARKER */
+  svg {
+    opacity: 0.75;
+    color: hsl(222.2 47.4% 20%);
+  }
+
+  /* Icon buttons more visible */
+  button svg {
+    opacity: 0.95 !important;
+    color: #000000 !important;
+    stroke: #000000 !important;
+    stroke-width: 2.8px !important;
+  }
+
+  /* QR icon specific fix */
+  .qr-icon {
+    opacity: 1 !important;
+    color: #000000 !important;
+    stroke: #000000 !important;
+    stroke-width: 3px !important;
+  }
+
+  .qr-code-button {
+    background: rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid rgba(0, 0, 0, 0.25) !important;
+  }
+
+  /* Target QR icon specifically just in case */
+  svg.lucide-qr-code {
+    opacity: 1 !important;
+    stroke-width: 3px !important;
+  }
+
+  button:hover svg {
+    opacity: 1;
+  }
+
+  /* QR code display in dialog */
+  .qr-container {
+    background: white !important;
+    padding: 1.5rem !important;
+    border-radius: 1rem !important;
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    margin: 1rem 0;
+  }
+
+  .qr-container img {
+    display: block;
+    margin: 0 auto;
+  }
+
+  /* Secondary buttons (Share Link, Browse Files, Camera, etc) - ENHANCED */
+  button[class*="bg-secondary"],
+  button[class*="variant-secondary"],
+  button[class*="ghost"],
+  button[class*="outline"] {
+    background: rgba(0, 0, 0, 0.08) !important;
+    border: 1px solid rgba(0, 0, 0, 0.25) !important;
+    color: hsl(222.2 47.4% 11.2%) !important;
+  }
+
+  button[class*="bg-secondary"]:hover,
+  button[class*="variant-secondary"]:hover,
+  button[class*="ghost"]:hover,
+  button[class*="outline"]:hover {
+    background: rgba(0, 0, 0, 0.14) !important;
+    border-color: rgba(0, 0, 0, 0.35) !important;
+  }
+
+  /* Small icon-only buttons (QR code, copy, theme toggle, etc) - VERY VISIBLE */
+  button[class*="w-8"],
+  button[class*="h-8"],
+  button[class*="w-9"],
+  button[class*="h-9"],
+  button[class*="w-10"],
+  button[class*="h-10"],
+  button[class*="w-11"],
+  button[class*="h-11"],
+  button[class*="p-0"],
+  button[class*="p-1"],
+  button[class*="p-2"] {
+    background: rgba(0, 0, 0, 0.12) !important;
+    border: 1px solid rgba(0, 0, 0, 0.28) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  button[class*="w-9"]:hover,
+  button[class*="h-9"]:hover,
+  button[class*="p-0"]:hover,
+  button[class*="p-2"]:hover {
+    background: rgba(0, 0, 0, 0.15) !important;
+    border-color: rgba(0, 0, 0, 0.32) !important;
+  }
+
+  /* Paste button and generic buttons */
+  button:not([class*="bg-primary"]):not([class*="destructive"]):not([class*="variant=\"primary\""]) {
+    background: rgba(0, 0, 0, 0.07) !important;
+    border: 1px solid rgba(0, 0, 0, 0.2) !important;
+  }
+
+  button:not([class*="bg-primary"]):not([class*="destructive"]):not([class*="variant=\"primary\""]):hover {
+    background: rgba(0, 0, 0, 0.12) !important;
+    border-color: rgba(0, 0, 0, 0.3) !important;
+  }
+
+  /* Upload area - EVEN MORE VISIBLE */
+  [class*="border-dashed"] {
+    border-color: rgba(0, 0, 0, 0.42) !important;
+    border-width: 2px !important;
+  }
+
+  /* Dividers */
+  hr,
+  [class*="border-t"],
+  [class*="border-b"] {
+    border-color: rgba(0, 0, 0, 0.14) !important;
   }
 }

@@ -70,25 +70,22 @@ export function MessageList({ messages, currentUserId, onDeleteMessage, isSessio
             className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[70%] rounded-lg p-3 ${
-                isOwnMessage
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white/10 text-white border border-white/20'
-              }`}
+              className={`max-w-[70%] rounded-lg p-3 ${isOwnMessage
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-foreground border border-border'
+                }`}
             >
               {/* Sender name and timestamp */}
               <div className="flex items-baseline justify-between gap-2 mb-1">
                 <span
-                  className={`text-sm font-semibold ${
-                    isOwnMessage ? 'text-blue-100' : 'text-white/90'
-                  }`}
+                  className={`text-sm font-semibold ${isOwnMessage ? 'text-primary-foreground/90' : 'text-foreground/90'
+                    }`}
                 >
                   {isOwnMessage ? 'You' : message.sentByName}
                 </span>
                 <span
-                  className={`text-xs ${
-                    isOwnMessage ? 'text-blue-200' : 'text-white/60'
-                  }`}
+                  className={`text-xs ${isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                    }`}
                 >
                   {formatTimestamp(message.sentAt)}
                 </span>
@@ -105,11 +102,10 @@ export function MessageList({ messages, currentUserId, onDeleteMessage, isSessio
                   onClick={() => handleCopy(message)}
                   variant="ghost"
                   size="sm"
-                  className={`h-7 px-2 ${
-                    isOwnMessage
-                      ? 'text-blue-100 hover:text-white hover:bg-blue-700'
-                      : 'text-white/70 hover:text-white hover:bg-white/10'
-                  }`}
+                  className={`h-7 px-2 ${isOwnMessage
+                      ? 'text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                    }`}
                   title="Copy message"
                 >
                   {isCopied ? (
@@ -130,11 +126,10 @@ export function MessageList({ messages, currentUserId, onDeleteMessage, isSessio
                     onClick={() => handleDelete(message.id)}
                     variant="ghost"
                     size="sm"
-                    className={`h-7 px-2 ${
-                      isOwnMessage
-                        ? 'text-blue-100 hover:text-white hover:bg-blue-700'
-                        : 'text-white/70 hover:text-white hover:bg-white/10'
-                    }`}
+                    className={`h-7 px-2 ${isOwnMessage
+                        ? 'text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                      }`}
                     title="Delete message"
                   >
                     <Trash2 className="w-3 h-3 mr-1" />

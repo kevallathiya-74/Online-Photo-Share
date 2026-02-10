@@ -81,7 +81,7 @@ export function SessionCreate({ onSessionCreated, lastSessionId }) {
         )}
 
         {/* Main Card */}
-        <Card className="glass border-white/10">
+        <Card className="glass border-border">
           <CardHeader>
             <CardTitle>Get Started</CardTitle>
             <CardDescription>
@@ -90,24 +90,22 @@ export function SessionCreate({ onSessionCreated, lastSessionId }) {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Tab Buttons */}
-            <div className="flex gap-2 p-1 bg-white/5 rounded-lg">
+            <div className="flex gap-2 p-1 bg-muted rounded-lg">
               <button
                 onClick={() => setMode('create')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-                  mode === 'create'
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${mode === 'create'
                     ? 'bg-primary text-primary-foreground shadow'
                     : 'text-muted-foreground hover:text-foreground'
-                }`}
+                  }`}
               >
                 Create Session
               </button>
               <button
                 onClick={() => setMode('join')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-                  mode === 'join'
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${mode === 'join'
                     ? 'bg-primary text-primary-foreground shadow'
                     : 'text-muted-foreground hover:text-foreground'
-                }`}
+                  }`}
               >
                 Join Session
               </button>

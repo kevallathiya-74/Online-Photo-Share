@@ -48,7 +48,7 @@ export function MessageInput({ onSendMessage, disabled }) {
     onSendMessage(trimmedMessage);
     setMessage('');
     setError('');
-    
+
     // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -70,7 +70,7 @@ export function MessageInput({ onSendMessage, disabled }) {
   };
 
   return (
-    <div className="border-t border-white/10 bg-white/5 p-4">
+    <div className="border-t border-border bg-accent/50 p-4">
       <div className="mb-2">
         <textarea
           ref={textareaRef}
@@ -79,9 +79,8 @@ export function MessageInput({ onSendMessage, disabled }) {
           onKeyDown={handleKeyDown}
           placeholder="Type a message... (Shift+Enter for new line)"
           disabled={disabled}
-          className={`w-full px-3 py-2 border border-white/20 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[60px] max-h-[200px] overflow-y-auto text-white placeholder:text-white/50 bg-white/10 ${
-            disabled ? 'bg-white/5 cursor-not-allowed opacity-50' : ''
-          }`}
+          className={`w-full px-3 py-2 border border-input rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[60px] max-h-[200px] overflow-y-auto text-foreground placeholder:text-muted-foreground bg-muted ${disabled ? 'bg-accent/50 cursor-not-allowed opacity-50' : ''
+            }`}
           rows={1}
         />
       </div>

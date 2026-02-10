@@ -7,9 +7,9 @@ const Badge = React.forwardRef(({ className, variant = 'default', ...props }, re
     secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
     destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/80',
     outline: 'text-foreground border border-input',
-    success: 'bg-green-500/20 text-green-400 border border-green-500/30',
-    warning: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
-    info: 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+    success: 'bg-green-500/15 text-green-700 dark:text-green-400 border border-green-500/30',
+    warning: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30',
+    info: 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30'
   };
 
   return (

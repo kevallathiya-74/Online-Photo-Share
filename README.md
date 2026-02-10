@@ -580,6 +580,12 @@ The project includes a `render.yaml` configuration file for easy deployment:
    - Environment variables are pre-configured
    - HTTPS is automatically enabled
 
+4. **Keep-Alive Service (Free Tier)**
+   - Built-in keep-alive service automatically prevents spin-down on Render free tier
+   - Pings server every 10 minutes to keep instance active
+   - No external setup required - works automatically
+   - See [KEEP_ALIVE.md](./KEEP_ALIVE.md) for details and alternatives
+
 ### Deploy to Railway.app
 
 ```bash

@@ -21,10 +21,10 @@ function getFileIcon(mimeType) {
 
 // Check if file can be previewed
 function canPreview(mimeType) {
-  return mimeType.startsWith('image/') || 
-         mimeType.startsWith('video/') || 
-         mimeType.startsWith('audio/') ||
-         mimeType === 'application/pdf';
+  return mimeType.startsWith('image/') ||
+    mimeType.startsWith('video/') ||
+    mimeType.startsWith('audio/') ||
+    mimeType === 'application/pdf';
 }
 
 // Individual file item
@@ -52,21 +52,21 @@ const FileItem = memo(({ file, onView, onDownload, onDelete }) => {
         if (mounted && result?.file?.buffer) {
           const blob = new Blob([result.file.buffer], { type: file.mimeType });
           const url = URL.createObjectURL(blob);
-          
+
           if (isVideo) {
             // Generate video thumbnail
             const video = document.createElement('video');
             video.src = url;
             video.currentTime = 1; // Seek to 1 second for thumbnail
             video.muted = true;
-            
+
             video.onloadeddata = () => {
               const canvas = document.createElement('canvas');
               canvas.width = video.videoWidth;
               canvas.height = video.videoHeight;
               const ctx = canvas.getContext('2d');
               ctx.drawImage(video, 0, 0);
-              
+
               canvas.toBlob((thumbBlob) => {
                 if (thumbBlob && mounted) {
                   const thumbUrl = URL.createObjectURL(thumbBlob);
@@ -75,7 +75,7 @@ const FileItem = memo(({ file, onView, onDownload, onDelete }) => {
                 }
               }, 'image/jpeg', 0.8);
             };
-            
+
             video.onerror = () => {
               if (mounted) {
                 setThumbnail(url); // Fallback to video URL
@@ -104,15 +104,15 @@ const FileItem = memo(({ file, onView, onDownload, onDelete }) => {
   }, [file.id, file.mimeType, hasVisualPreview, isVideo, requestFile]);
 
   return (
-    <div className="group relative rounded-xl overflow-hidden bg-white/5 border border-white/10 image-grid-item animate-scale-in">
+    <div className="group relative rounded-xl overflow-hidden bg-muted/50 border border-border image-grid-item animate-scale-in">
       {/* File Preview/Icon */}
-      <div 
+      <div
         className="aspect-square cursor-pointer relative"
         onClick={() => canPreview(file.mimeType) ? onView(file) : onDownload(file)}
       >
         {hasVisualPreview ? (
           isLoading ? (
-            <div className="w-full h-full flex items-center justify-center bg-black/20">
+            <div className="w-full h-full flex items-center justify-center bg-black/20 dark:bg-black/40">
               <Spinner size="lg" />
             </div>
           ) : thumbnail ? (
@@ -132,19 +132,19 @@ const FileItem = memo(({ file, onView, onDownload, onDelete }) => {
               )}
             </>
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-black/20">
+            <div className="w-full h-full flex items-center justify-center bg-black/20 dark:bg-black/40">
               <Icon className="h-12 w-12 text-muted-foreground" />
             </div>
           )
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10">
-            <div className="bg-white/10 rounded-2xl p-4 mb-3">
-              <Icon className="h-12 w-12 text-white/80" />
+          <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-muted/30">
+            <div className="bg-accent rounded-2xl p-4 mb-3">
+              <Icon className="h-12 w-12 text-foreground/80" />
             </div>
-            <p className="text-xs text-center text-white/70 font-medium truncate w-full px-2">
+            <p className="text-xs text-center text-muted-foreground font-medium truncate w-full px-2">
               {file.filename}
             </p>
-            <p className="text-xs text-center text-white/50 mt-1">
+            <p className="text-xs text-center text-muted-foreground/70 mt-1">
               {formatFileSize(file.size)}
             </p>
           </div>
@@ -161,7 +161,7 @@ const FileItem = memo(({ file, onView, onDownload, onDelete }) => {
               {formatFileSize(file.size)} • {formatRelativeTime(file.uploadedAt)}
             </p>
           </div>
-          
+
           {/* Action buttons */}
           <div className="flex gap-2">
             <Button
@@ -283,7 +283,7 @@ export function FileGrid() {
   if (files.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/5 mb-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mb-4">
           <FileIcon className="h-8 w-8 text-muted-foreground" />
         </div>
         <h3 className="text-lg font-medium">No files yet</h3>
@@ -337,7 +337,7 @@ export function FileGrid() {
 
               {/* File Preview */}
               {viewingFileUrl ? (
-                <div className="rounded-lg overflow-hidden bg-black/20">
+                <div className="rounded-lg overflow-hidden bg-muted/30">
                   {viewingFile.mimeType.startsWith('image/') && (
                     <img
                       src={viewingFileUrl}

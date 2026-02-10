@@ -11,20 +11,21 @@ import { Badge } from './components/ui/Badge';
 import { Alert, AlertDescription } from './components/ui/Alert';
 import { Spinner } from './components/ui/Spinner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './components/ui/Card';
+import { ThemeToggle } from './components/ui/ThemeToggle';
 
 export default function App() {
   const { isConnected } = useSocket();
-  const { 
-    session, 
-    messages, 
-    memberCount, 
-    isLoading, 
-    error, 
-    joinSession, 
-    leaveSession, 
+  const {
+    session,
+    messages,
+    memberCount,
+    isLoading,
+    error,
+    joinSession,
+    leaveSession,
     sendMessage,
     deleteMessage,
-    clearError 
+    clearError
   } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showSidebar, setShowSidebar] = useState(false);
@@ -52,25 +53,25 @@ export default function App() {
     if (leavingRef.current) {
       return;
     }
-    
+
     if (sessionId && !session && !initialJoinAttempted && isConnected) {
       setInitialJoinAttempted(true);
       // Store session ID for potential rejoin
       setLastSessionId(sessionId);
       localStorage.setItem('lastSessionId', sessionId);
-      
+
       joinSession(sessionId).catch((err) => {
         console.error('Failed to join session:', err);
         // Clear the session param on error
         setSearchParams({});
-        
+
         // Check if session expired/not found
         if (err.message.includes('not found') || err.message.includes('expired')) {
           setSessionExpired(true);
         }
       });
     }
-    
+
     // If no session in URL and not loading, show create page
     if (!sessionId && !session && !isLoading) {
       setInitialJoinAttempted(false);
@@ -82,7 +83,7 @@ export default function App() {
     if (leavingRef.current) {
       return;
     }
-    
+
     if (session && !isLeaving && !searchParams.get('session')) {
       setSearchParams({ session: session.id });
     }
@@ -94,15 +95,15 @@ export default function App() {
     setIsLeaving(true);
     setInitialJoinAttempted(false);
     setSessionExpired(false);
-    
+
     // Clear URL and leave session
     setSearchParams({});
     await leaveSession();
-    
+
     // Don't clear lastSessionId - user might want to rejoin
     if (clearError) clearError();
     setIsLeaving(false);
-    
+
     setTimeout(() => {
       leavingRef.current = false;
     }, 100);
@@ -137,12 +138,12 @@ export default function App() {
                 Sessions automatically expire after 5 hours of inactivity or when all devices leave.
               </AlertDescription>
             </Alert>
-            
+
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground text-center">
                 Would you like to create a new session or join a different one?
               </p>
-              
+
               <div className="flex flex-col gap-2">
                 <Button
                   onClick={() => {
@@ -155,7 +156,7 @@ export default function App() {
                 >
                   Create New Session
                 </Button>
-                
+
                 <Button
                   onClick={() => {
                     setSessionExpired(false);
@@ -182,22 +183,28 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-background/80 backdrop-blur-xl safe-top">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl safe-top">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-white/5"
+              className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-accent"
               onClick={() => setShowSidebar(!showSidebar)}
             >
               {showSidebar ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
             <h1 className="text-xl font-bold gradient-text">FileShare</h1>
           </div>
-          
+
           <div className="flex items-center gap-3">
+            {!isConnected && (
+              <Badge variant="destructive" className="animate-pulse">
+                Reconnecting...
+              </Badge>
+            )}
             <Badge variant="info" className="hidden sm:flex">
               {memberCount} {memberCount === 1 ? 'device' : 'devices'}
             </Badge>
+            <ThemeToggle />
             <button
               onClick={(e) => {
                 e.preventDefault();
@@ -222,7 +229,7 @@ export default function App() {
             transform transition-transform duration-200 ease-out
             ${showSidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             bg-background lg:bg-transparent
-            border-r border-white/10 lg:border-0
+            border-r border-border lg:border-0
             p-4 lg:p-0 pt-20 lg:pt-0
             space-y-6
           `}>
@@ -232,7 +239,7 @@ export default function App() {
 
           {/* Overlay for mobile sidebar */}
           {showSidebar && (
-            <div 
+            <div
               className="fixed inset-0 bg-black/50 z-20 lg:hidden"
               onClick={() => setShowSidebar(false)}
             />
@@ -259,13 +266,13 @@ export default function App() {
                   {view === 'files' ? 'Shared Files' : 'Messages'}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {view === 'files' 
+                  {view === 'files'
                     ? 'Files appear here instantly when shared by any device'
                     : 'Send and receive text messages in real-time'
                   }
                 </p>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button
                   variant={view === 'files' ? 'default' : 'outline'}
@@ -294,14 +301,14 @@ export default function App() {
 
             {/* Messages View */}
             {view === 'messages' && (
-              <div className="flex flex-col h-[calc(100vh-16rem)] border border-white/10 rounded-lg bg-white/5 backdrop-blur-sm">
-                <MessageList 
+              <div className="flex flex-col h-[calc(100vh-16rem)] border border-border rounded-lg bg-muted/30 backdrop-blur-sm">
+                <MessageList
                   messages={messages}
                   currentUserId={isConnected ? session?.id : null}
                   onDeleteMessage={deleteMessage}
                   isSessionCreator={false}
                 />
-                <MessageInput 
+                <MessageInput
                   onSendMessage={sendMessage}
                   disabled={!isConnected}
                 />

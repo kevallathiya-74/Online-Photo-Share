@@ -113,25 +113,43 @@ export function SocketProvider({ children }) {
 
   const emit = useCallback((event, data) => {
     return new Promise((resolve, reject) => {
-      if (!socket || !isConnected) {
-        reject(new Error('Socket not connected'));
-        return;
-      }
+      // Wait for socket connection with timeout
+      const waitForConnection = () => {
+        if (socket && isConnected) {
+          // Socket is connected, proceed with emit
+          const timeout = setTimeout(() => {
+            reject(new Error('Request timeout - server did not respond'));
+          }, 30000); // 30 second timeout
 
-      // Add timeout to prevent hanging requests
-      const timeout = setTimeout(() => {
-        reject(new Error('Request timeout - server did not respond'));
-      }, 30000); // 30 second timeout
-
-      socket.emit(event, data, (response) => {
-        clearTimeout(timeout);
-        
-        if (response?.success === false) {
-          reject(new Error(response.error || 'Unknown error'));
+          socket.emit(event, data, (response) => {
+            clearTimeout(timeout);
+            
+            if (response?.success === false) {
+              reject(new Error(response.error || 'Unknown error'));
+            } else {
+              resolve(response);
+            }
+          });
+        } else if (!socket) {
+          // Socket not initialized yet
+          reject(new Error('Socket not initialized. Please refresh the page.'));
         } else {
-          resolve(response);
+          // Socket exists but not connected, wait for connection
+          const connectionTimeout = setTimeout(() => {
+            reject(new Error('Unable to connect to server. Please check your internet connection.'));
+          }, 5000); // Wait up to 5 seconds for connection
+
+          const checkConnection = setInterval(() => {
+            if (isConnected) {
+              clearInterval(checkConnection);
+              clearTimeout(connectionTimeout);
+              waitForConnection(); // Retry emit once connected
+            }
+          }, 100); // Check every 100ms
         }
-      });
+      };
+
+      waitForConnection();
     });
   }, [socket, isConnected]);
 

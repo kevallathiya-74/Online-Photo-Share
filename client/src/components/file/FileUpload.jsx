@@ -81,40 +81,52 @@ export function FileUpload({ onUploadSuccess }) {
     // Upload valid files with progress tracking
     for (const file of validFiles) {
       const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
-      setUploadQueue(prev => [...prev, { 
-        id, 
-        name: file.name, 
+
+      setUploadQueue(prev => [...prev, {
+        id,
+        name: file.name,
         size: file.size,
         progress: 0,
         status: 'uploading'
       }]);
-      
+
       try {
         // Use real progress tracking from chunked upload
         await uploadFile(file, (progress, status) => {
-          setUploadQueue(prev => prev.map(item => 
+          setUploadQueue(prev => prev.map(item =>
             item.id === id ? { ...item, progress, status } : item
           ));
         });
-        
+
         // Notify parent of successful upload (triggers sidebar close on mobile)
         if (onUploadSuccess) {
           onUploadSuccess();
         }
-        
+
         // Remove from queue after success
         setTimeout(() => {
           setUploadQueue(prev => prev.filter(item => item.id !== id));
         }, 2000);
-        
+
       } catch (err) {
-        const errorMessage = err.message || 'Upload failed. Please check your connection and try again.';
-        setErrors(prev => [...prev, `${file.name}: ${errorMessage}`]);
-        setUploadQueue(prev => prev.map(item => 
+        let errorMessage = err.message || 'Upload failed. Please check your connection and try again.';
+
+        // Provide more specific error messages
+        if (errorMessage.includes('Socket not connected') || errorMessage.includes('Socket not initialized')) {
+          errorMessage = `${file.name}: Connection lost. Please wait a moment and try again.`;
+        } else if (errorMessage.includes('Unable to connect')) {
+          errorMessage = `${file.name}: Unable to connect to server. Please check your internet connection.`;
+        } else if (errorMessage.includes('timeout')) {
+          errorMessage = `${file.name}: Upload timed out. The file may be too large or your connection is slow.`;
+        } else {
+          errorMessage = `${file.name}: ${errorMessage}`;
+        }
+
+        setErrors(prev => [...prev, errorMessage]);
+        setUploadQueue(prev => prev.map(item =>
           item.id === id ? { ...item, status: 'error', progress: 0 } : item
         ));
-        
+
         setTimeout(() => {
           setUploadQueue(prev => prev.filter(item => item.id !== id));
           setErrors(prev => prev.filter(e => !e.includes(file.name)));
@@ -139,7 +151,7 @@ export function FileUpload({ onUploadSuccess }) {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    
+
     const files = e.dataTransfer?.files;
     if (files?.length) {
       processFiles(files);
@@ -232,12 +244,12 @@ export function FileUpload({ onUploadSuccess }) {
           onChange={handleFileSelect}
           className="hidden"
         />
-        
+
         <div className="space-y-4">
           <div className="flex justify-center">
             <div className={cn(
               'p-4 rounded-full transition-colors',
-              isDragging ? 'bg-primary/20' : 'bg-white/5'
+              isDragging ? 'bg-primary/20' : 'bg-muted/50'
             )}>
               <Upload className={cn(
                 'h-8 w-8 transition-colors',
@@ -245,7 +257,7 @@ export function FileUpload({ onUploadSuccess }) {
               )} />
             </div>
           </div>
-          
+
           <div>
             <p className="font-medium">
               {isDragging ? 'Drop files here' : 'Drag & drop any files'}
@@ -254,10 +266,10 @@ export function FileUpload({ onUploadSuccess }) {
               or click to browse • paste with Ctrl+V • up to 100MB per file
             </p>
           </div>
-          
+
           <div className="flex gap-2 justify-center">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
@@ -267,11 +279,11 @@ export function FileUpload({ onUploadSuccess }) {
               <FileIcon className="h-4 w-4 mr-2" />
               Browse Files
             </Button>
-            
+
             {cameraSupported && (
               <>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -281,7 +293,7 @@ export function FileUpload({ onUploadSuccess }) {
                   <Camera className="h-4 w-4 mr-2" />
                   Camera
                 </Button>
-                
+
                 {/* Hidden camera input as fallback */}
                 <input
                   ref={cameraInputRef}
@@ -301,9 +313,9 @@ export function FileUpload({ onUploadSuccess }) {
       {uploadQueue.length > 0 && (
         <div className="space-y-2">
           {uploadQueue.map((item) => (
-            <div 
-              key={item.id} 
-              className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10"
+            <div
+              key={item.id}
+              className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border"
             >
               {item.status === 'success' ? (
                 <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
@@ -312,25 +324,25 @@ export function FileUpload({ onUploadSuccess }) {
               ) : (
                 <Spinner size="sm" className="flex-shrink-0" />
               )}
-              
+
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{item.name}</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                    <div 
+                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
                       className={cn(
                         "h-full transition-all duration-300 rounded-full",
                         item.status === 'success' ? 'bg-green-500' :
-                        item.status === 'error' ? 'bg-red-500' :
-                        'bg-primary'
+                          item.status === 'error' ? 'bg-red-500' :
+                            'bg-primary'
                       )}
                       style={{ width: `${item.progress}%` }}
                     />
                   </div>
                   <span className="text-xs text-muted-foreground">
                     {item.status === 'success' ? 'Done' :
-                     item.status === 'error' ? 'Failed' :
-                     `${item.progress}%`}
+                      item.status === 'error' ? 'Failed' :
+                        `${item.progress}%`}
                   </span>
                 </div>
               </div>

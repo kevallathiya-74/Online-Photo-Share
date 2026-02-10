@@ -31,10 +31,10 @@ export function SessionInfo({ session, memberCount }) {
     const updateTime = () => {
       setRemainingTime(formatRemainingTime(session.expiresAt));
     };
-    
+
     updateTime();
     const interval = setInterval(updateTime, 60000);
-    
+
     return () => clearInterval(interval);
   }, [session.expiresAt]);
 
@@ -65,7 +65,7 @@ export function SessionInfo({ session, memberCount }) {
   };
 
   return (
-    <Card className="glass border-white/10">
+    <Card className="glass border-border">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div>
@@ -84,7 +84,7 @@ export function SessionInfo({ session, memberCount }) {
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Session ID Display */}
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/10">
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
           <code className="flex-1 text-sm font-mono text-muted-foreground">
             {session.id}
           </code>
@@ -104,19 +104,19 @@ export function SessionInfo({ session, memberCount }) {
 
         {/* Action Buttons */}
         <div className="flex gap-2">
-          <Button 
-            onClick={handleShare} 
+          <Button
+            onClick={handleShare}
             className="flex-1"
             variant="secondary"
           >
             <Share2 className="h-4 w-4 mr-2" />
             Share Link
           </Button>
-          
+
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline" size="icon">
-                <QrCode className="h-4 w-4" />
+              <Button variant="secondary" size="icon" className="qr-code-button">
+                <QrCode className="h-4 w-4 qr-icon" />
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
@@ -126,9 +126,9 @@ export function SessionInfo({ session, memberCount }) {
               <div className="flex flex-col items-center py-6">
                 {qrDataUrl && (
                   <div className="qr-container">
-                    <img 
-                      src={qrDataUrl} 
-                      alt="QR Code" 
+                    <img
+                      src={qrDataUrl}
+                      alt="QR Code"
                       className="w-64 h-64"
                     />
                   </div>
